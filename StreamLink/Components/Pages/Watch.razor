@@ -1,0 +1,29 @@
+@page "/watch/{Token}"
+@rendermode InteractiveServer
+@inject IShareLinkService Shares
+<PageTitle>@(playback is null ? "Watch · streamlink" : $"{playback.Link.ChannelName} · streamlink")</PageTitle>
+<div class="public-watch">
+	@if (state == "missing") { <h1>Link unavailable</h1><p class="muted">This share link does not exist.</p> }
+	else if (state == "revoked") { <h1>Link revoked</h1><p class="muted">This share link is no longer available.</p> }
+	else if (state == "expired") { <h1>Link expired</h1><p class="muted">This share link has passed its expiration time.</p> }
+	else if (playback is not null)
+	{
+		<div class="page-heading compact"><div><div class="eyebrow">WATCH SHARE LINK</div><h1>@playback.Link.ChannelName</h1><p class="muted page-intro">@playback.Link.CategoryName</p></div><span class="count-badge"><span class="live-dot">LIVE</span></span></div>
+		<section class="player-card public-player"><video id="shared-stream-player" controls playsinline preload="metadata" src="@playback.StreamUrl"></video><div class="player-caption"><span class="live-dot">LIVE</span> Shared playback</div></section>
+	}
+	else { <h1>Playback unavailable</h1><p class="muted">The stream URL could not be restored. Create a new share link from the channel page.</p> }
+</div>
+@code {
+	[Parameter] public string Token { get; set; } = "";
+	private SharePlayback? playback;
+	private string state = "loading";
+	protected override async Task OnInitializedAsync()
+	{
+		var link = await Shares.GetAsync(Token);
+		if (link is null) { state = "missing"; return; }
+		if (link.Revoked) { state = "revoked"; return; }
+		if (link.ExpiresUtc <= DateTime.UtcNow) { state = "expired"; return; }
+		playback = await Shares.GetPlaybackAsync(Token);
+		state = "ready";
+	}
+}

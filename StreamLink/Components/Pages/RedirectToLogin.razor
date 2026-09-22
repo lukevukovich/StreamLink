@@ -1,0 +1,4 @@
+<div class="auth-loading"><div class="loading-mark">◌</div><span>Checking your session…</span></div>
+@inject NavigationManager Navigation
+@inject SessionState Session
+@code { protected override void OnAfterRender(bool firstRender) { if (firstRender && Session.Session is null) Navigation.NavigateTo("/login"); } }

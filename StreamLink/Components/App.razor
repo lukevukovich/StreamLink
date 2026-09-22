@@ -1,0 +1,25 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="streamlink-overrides.css" />
+    <link rel="stylesheet" href="StreamLink.styles.css" />
+    <meta name="theme-color" content="#07181b" />
+    <link rel="icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
+    <link rel="shortcut icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
+    <link rel="mask-icon" href="/streamlink-icon.svg?v=3" color="#89c0b6" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="js/player.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>

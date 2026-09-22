@@ -1,0 +1,39 @@
+@page "/tv"
+@rendermode InteractiveServer
+@inject IXtreamApiService Xtream
+@inject SessionState Session
+@inject NavigationManager Navigation
+
+<PageTitle>Live TV · streamlink</PageTitle>
+@if (Session.Session is null) { <RedirectToLogin /> }
+else
+{
+    <div class="page-heading"><div><div class="eyebrow">LIVE TELEVISION</div><h1>What do you want to watch?</h1><p class="muted page-intro">Choose a category to start exploring.</p><span class="count-badge category-count"><span class="live-dot">LIVE</span> · @filteredCategories.Count() categories</span></div></div>
+    <input class="search category-search" placeholder="Search categories" aria-label="Search categories" @bind="categorySearch" @bind:event="oninput" />
+    @if (loading) { <div class="loading-card">Loading your categories…</div> }
+    else if (!string.IsNullOrWhiteSpace(loadError)) { <div class="empty-card">@loadError</div> }
+    else if (categories.Count == 0) { <div class="empty-card">No live TV categories were returned by your provider.</div> }
+    else
+    {
+        @if (!filteredCategories.Any()) { <div class="empty-card">No categories match “@categorySearch”.</div> }
+        else { <div class="category-grid">@foreach (var category in filteredCategories) { <button class="category-card" @onclick="() => OpenCategory(category)"><span class="category-name">@category.Name</span><span class="category-arrow">→</span></button> }</div> }
+    }
+}
+
+@code {
+    private IReadOnlyList<XtreamCategory> categories = [];
+    private bool loading = true;
+    private string? loadError;
+    private string categorySearch = "";
+    private IEnumerable<XtreamCategory> filteredCategories => string.IsNullOrWhiteSpace(categorySearch)
+        ? categories
+        : categories.Where(category => category.Name.Contains(categorySearch, StringComparison.OrdinalIgnoreCase));
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.Session is null) return;
+        try { categories = await Xtream.GetCategoriesAsync(Session.Session); }
+        catch (Exception) { loadError = "We couldn't load your live TV categories. Try refreshing the page."; }
+        finally { loading = false; }
+    }
+    private void OpenCategory(XtreamCategory category) => Navigation.NavigateTo($"/tv/{Uri.EscapeDataString(category.Id)}?name={Uri.EscapeDataString(category.Name)}");
+}

@@ -1,0 +1,53 @@
+﻿@inherits LayoutComponentBase
+@inject SessionState Session
+@inject SessionPersistence SessionPersistence
+@inject IJSRuntime Js
+@inject NavigationManager Navigation
+
+<div class="app-shell @(IsAuthScreen ? "auth-shell" : "")">
+    <header class="topbar">
+        <a class="brand" href="/">stream<span>link</span></a>
+        <div class="topbar-actions"><NavMenu /></div>
+    </header>
+    <main class="content-wrap @(IsLoginRoute ? "auth-content" : "")">
+        @if (!Session.IsHydrated)
+        {
+            <div class="auth-loading"><div class="loading-mark">◌</div><span>Loading <span class="wordmark"><span>stream</span><span>link</span></span>…</span></div>
+        }
+        else
+        {
+            @Body
+        }
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            var protectedSession = await Js.InvokeAsync<string?>("streamlinkStorage.get", SessionPersistence.StorageKeyName);
+            var restored = SessionPersistence.Unprotect(protectedSession);
+            if (restored is not null) Session.SetSession(restored);
+        }
+        catch (JSException) { }
+        finally
+        {
+            Session.MarkHydrated();
+            await InvokeAsync(StateHasChanged);
+            if (Navigation.ToBaseRelativePath(Navigation.Uri).Equals("login", StringComparison.OrdinalIgnoreCase) && Session.IsAuthenticated)
+                Navigation.NavigateTo("/", replace: true);
+        }
+    }
+
+    private bool IsLoginRoute => Navigation.ToBaseRelativePath(Navigation.Uri).Equals("login", StringComparison.OrdinalIgnoreCase);
+    private bool IsAuthScreen => !Session.IsAuthenticated && (string.IsNullOrEmpty(Navigation.ToBaseRelativePath(Navigation.Uri)) || IsLoginRoute);
+}

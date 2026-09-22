@@ -1,0 +1,62 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio / VS Code user state
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+# Rider / ReSharper
+.idea/
+_ReSharper*/
+*.DotSettings.user
+
+# NuGet and package caches
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Core development files
+wwwroot/lib/
+appsettings.Local.json
+**/appsettings.Development.json
+secrets.json
+
+# Local application data and generated security keys
+*.db
+*.db-shm
+*.db-wal
+**/App_Data/keys/
+
+# Logs and diagnostics
+*.log
+logs/
+
+# Test results and coverage
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.bak
+
+get-iptv-link.ps1
+mint-palette.json

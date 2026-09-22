@@ -1,0 +1,30 @@
+@page "/account"
+@rendermode InteractiveServer
+@inject SessionState Session
+@inject IXtreamApiService Xtream
+@inject NavigationManager Navigation
+@inject SessionPersistence SessionPersistence
+@inject IJSRuntime Js
+<PageTitle>Account · streamlink</PageTitle>
+@if (Session.Session is null) { <RedirectToLogin /> } else { <div class="page-heading compact"><div><div class="eyebrow">ACCOUNT</div><h1>@Session.Session.Username</h1><p class="muted account-server">@Session.Session.ServerUrl</p></div><div class="account-actions"><button class="button ghost account-action-button" @onclick="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 9a7 7 0 0 1 12-2l2 2M4 13l2 2a7 7 0 0 0 12-2"/></svg><span>Refresh</span></button><button class="button account-action-button account-logout" @onclick="Logout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M14 8l4 4-4 4M18 12H9"/></svg><span>Sign out</span></button></div></div><section class="account-card"><div class="account-status"><span class="status-dot"></span><div><strong>@Session.Session.UserInfo.Status</strong><small>Account status</small></div></div><div class="metrics"><div><b>@Session.Session.UserInfo.ActiveConnections</b><span>Active</span></div><div><b>@Session.Session.UserInfo.MaxConnections</b><span>Maximum</span></div><div><b>@Math.Max(0, Session.Session.UserInfo.MaxConnections - Session.Session.UserInfo.ActiveConnections)</b><span>Available</span></div></div><div class="account-details"><span>Expires</span><strong>@(Session.Session.UserInfo.Expiration?.ToLocalTime().ToString("MMM d, yyyy · h:mm tt") ?? "Not provided")</strong><span>Trial</span><strong>@(Session.Session.UserInfo.IsTrial == "1" ? "Yes" : "No")</strong></div></section> }
+@code {
+	private async Task Refresh()
+	{
+		if (Session.Session is not null)
+		{
+			var refreshed = await Xtream.RefreshAccountAsync(Session.Session);
+			if (refreshed is not null)
+			{
+				Session.SetSession(refreshed);
+				await Js.InvokeVoidAsync("streamlinkStorage.set", SessionPersistence.StorageKeyName, SessionPersistence.Protect(refreshed));
+			}
+		}
+	}
+
+	private async Task Logout()
+	{
+		Session.Clear();
+		await Js.InvokeVoidAsync("streamlinkStorage.remove", SessionPersistence.StorageKeyName);
+		Navigation.NavigateTo("/login", replace: true);
+	}
+}

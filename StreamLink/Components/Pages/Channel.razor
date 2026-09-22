@@ -1,0 +1,32 @@
+@page "/channel/{StreamId:int}"
+@rendermode InteractiveServer
+@inject SessionState Session
+@inject IStreamUrlService Urls
+@inject IShareLinkService Shares
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+<PageTitle>@ChannelName · streamlink</PageTitle>
+@if (Session.Session is null) { <RedirectToLogin /> }
+else
+{
+    <a class="back-link" href="/tv">← Live TV</a>
+    <section class="detail-hero"><div><div class="eyebrow">NOW AVAILABLE</div><h1>@ChannelName</h1><p class="muted">@CategoryName · Stream @StreamId</p></div></section>
+    @if (links is not null && links.HlsAllowed)
+    {
+        <section class="player-card"><video id="stream-player" controls playsinline preload="metadata" src="@links.HlsUrl"></video><div class="player-caption"><span class="live-dot">LIVE</span> HLS playback</div></section>
+    }
+    <section class="panel"><div class="section-title"><div><div class="eyebrow">STREAM LINKS</div><h2>Choose a format</h2></div><button class="button ghost" @onclick="CreateShare">Share</button></div>
+        @if (links is not null) { @if (links.HlsAllowed) { <LinkRow Label="HLS · .m3u8" Url="@links.HlsUrl" /> } @if (links.TsAllowed) { <LinkRow Label="MPEG-TS · .ts" Url="@links.TsUrl" /> } }
+        @if (!string.IsNullOrWhiteSpace(shareUrl)) { <div class="share-created"><strong>Share link ready</strong><span>@shareUrl</span><a href="@shareUrl">Open link →</a></div> }
+    </section>
+}
+
+@code {
+    [Parameter] public int StreamId { get; set; }
+    [SupplyParameterFromQuery(Name = "name")] public string ChannelName { get; set; } = "Channel";
+    [SupplyParameterFromQuery(Name = "category")] public string CategoryName { get; set; } = "Live TV";
+    private StreamLinks? links; private string? shareUrl;
+    protected override void OnInitialized() { if (Session.Session is not null) links = Urls.BuildLinks(Session.Session, StreamId); }
+    private async Task CreateShare() { if (Session.Session is null) return; var link = await Shares.CreateAsync(Session.Session, Session.OwnerKey, new XtreamChannel { StreamId = StreamId, Name = ChannelName }, CategoryName, ShareExpiration.EightHours); shareUrl = Navigation.ToAbsoluteUri($"/watch/{link.Token}").ToString(); }
+}

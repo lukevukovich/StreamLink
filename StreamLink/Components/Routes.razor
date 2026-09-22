@@ -1,0 +1,11 @@
+﻿<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <div class="empty-card not-found"><div class="eyebrow">404</div><h1>That stream wandered off.</h1><p class="muted">The page you requested is not available.</p><a class="button primary" href="/">Return home</a></div>
+        </LayoutView>
+    </NotFound>
+</Router>

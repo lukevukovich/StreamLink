@@ -1,0 +1,82 @@
+﻿@page "/"
+@page "/login"
+@rendermode InteractiveServer
+@inject IXtreamApiService Xtream
+@inject SessionState Session
+@inject SessionPersistence SessionPersistence
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+<PageTitle>@(Session.IsAuthenticated ? "Welcome · streamlink" : "Sign in · streamlink")</PageTitle>
+@if (Session.IsAuthenticated)
+{
+<div class="welcome-page"><div class="eyebrow"><span class="wordmark"><span>stream</span><span>link</span></span></div><h1>Ready when you are.</h1><p class="muted">Your live TV library is waiting. Jump back in or explore your account.</p><div class="welcome-actions"><a class="button primary" href="/tv">Open Live TV <span>→</span></a><a class="button ghost" href="/shares">Manage shares</a></div></div>
+}
+else
+{
+<div class="login-page compact-login">
+	<div class="login-orbit"></div>
+	<section class="login-card">
+		<div class="eyebrow">YOUR TV, SIMPLIFIED</div>
+		<h1>Welcome to <span class="wordmark"><span>stream</span><span>link</span></span></h1>
+		<p class="muted">Connect your Xtream account to browse and watch live television anywhere.</p>
+		<div class="login-form" @onkeydown="HandleKeyDown">
+			<label>Server URL<input @bind="credentials.ServerUrl" @bind:event="oninput" placeholder="https://provider.example" inputmode="url" /></label>
+			<label>Username<input @bind="credentials.Username" @bind:event="oninput" autocomplete="username" /></label>
+			<label>Password<input @bind="credentials.Password" @bind:event="oninput" type="password" autocomplete="current-password" /></label>
+			@if (!string.IsNullOrWhiteSpace(error)) { <div class="alert">@error</div> }
+			<button type="button" class="button primary wide" disabled="@busy" @onclick="ConnectAsync">@(busy ? "Connecting…" : "Connect securely")</button>
+		</div>
+		<div class="login-note"><span>●</span> Encrypted on this device · never logged</div>
+	</section>
+</div>
+}
+
+@code {
+	private Credentials credentials = new();
+	private bool busy;
+	private string? error;
+	private async Task ConnectAsync()
+	{
+		if (busy) return;
+		error = null;
+		if (!Uri.TryCreate(credentials.ServerUrl.Trim(), UriKind.Absolute, out var server) || server.Scheme is not ("http" or "https"))
+		{
+			error = "Enter a complete server address, including https://.";
+			return;
+		}
+		if (string.IsNullOrWhiteSpace(credentials.Username) || string.IsNullOrWhiteSpace(credentials.Password))
+		{
+			error = "Enter your username and password to continue.";
+			return;
+		}
+
+		busy = true;
+		try
+		{
+			var session = await Xtream.LoginAsync(server.ToString(), credentials.Username.Trim(), credentials.Password);
+			if (session is null) error = "We couldn't connect. Check your details and provider address, then try again.";
+			else
+			{
+				Session.SetSession(session);
+				await Js.InvokeVoidAsync("streamlinkStorage.set", SessionPersistence.StorageKeyName, SessionPersistence.Protect(session));
+				Navigation.NavigateTo("/", replace: true);
+			}
+		}
+		catch (JSException) { error = "The browser could not save this session. Please allow site storage and try again."; }
+		catch (Exception) { error = "The provider responded, but StreamLink could not complete the sign-in. Please try again."; }
+		finally { busy = false; }
+	}
+
+	private async Task HandleKeyDown(KeyboardEventArgs args)
+	{
+		if (args.Key == "Enter") await ConnectAsync();
+	}
+
+	private sealed class Credentials
+	{
+		public string ServerUrl { get; set; } = "";
+		public string Username { get; set; } = "";
+		public string Password { get; set; } = "";
+	}
+}

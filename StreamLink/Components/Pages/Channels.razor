@@ -1,0 +1,23 @@
+@page "/tv/{CategoryId}"
+@rendermode InteractiveServer
+@inject IXtreamApiService Xtream
+@inject SessionState Session
+@inject NavigationManager Navigation
+
+<PageTitle>@CategoryName · streamlink</PageTitle>
+@if (Session.Session is null) { <RedirectToLogin /> }
+else
+{
+    <a class="back-link" href="/tv">← All categories</a><div class="page-heading compact"><div><div class="eyebrow">LIVE TELEVISION</div><h1>@CategoryName</h1><p class="muted page-intro">Pick a channel to open its stream.</p><span class="count-badge"><span class="live-dot">LIVE</span> · @filteredChannels.Count() channels</span></div></div>
+    <input class="search" placeholder="Search channels" @bind="search" @bind:event="oninput" />
+    @if (loading) { <div class="loading-card">Loading channels…</div> } else { <div class="channel-list">@foreach (var channel in filteredChannels) { <button class="channel-row" @onclick="() => OpenChannel(channel)"><span class="channel-logo">@if (!string.IsNullOrWhiteSpace(channel.LogoUrl)) { <img src="@channel.LogoUrl" alt="" /> } else { <span>TV</span> }</span><span class="channel-copy"><strong>@channel.Name</strong><small>Live channel</small></span><span class="chevron">›</span></button> }</div> }
+}
+
+@code {
+    [Parameter] public string CategoryId { get; set; } = "";
+    [SupplyParameterFromQuery(Name = "name")] public string CategoryName { get; set; } = "Live TV";
+    private IReadOnlyList<XtreamChannel> channels = []; private bool loading = true; private string search = "";
+    private IEnumerable<XtreamChannel> filteredChannels => string.IsNullOrWhiteSpace(search) ? channels : channels.Where(x => x.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
+    private void OpenChannel(XtreamChannel channel) => Navigation.NavigateTo($"/channel/{channel.StreamId}?name={Uri.EscapeDataString(channel.Name)}&category={Uri.EscapeDataString(CategoryName)}");
+    protected override async Task OnInitializedAsync() { if (Session.Session is not null) channels = await Xtream.GetChannelsAsync(Session.Session, CategoryId); loading = false; }
+}

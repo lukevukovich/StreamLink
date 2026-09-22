@@ -1,0 +1,21 @@
+@page "/shares"
+@rendermode InteractiveServer
+@inject SessionState Session
+@inject IShareLinkService ShareService
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+<PageTitle>Shares · streamlink</PageTitle>
+@if (Session.Session is null) { <RedirectToLogin /> }
+else
+{
+    <div class="page-heading"><div><div class="eyebrow">YOUR LINKS</div><h1>Active shares.</h1></div><span class="count-badge">@links.Count active</span></div>
+    @if (links.Count == 0) { <div class="empty-card">You haven't created any active share links yet. Open a channel and tap Share.</div> }
+    else { <div class="share-list">@foreach (var link in links) { var url = Navigation.ToAbsoluteUri($"/watch/{link.Token}").ToString(); <article class="share-item"><div><strong>@link.ChannelName</strong><small>@link.CategoryName · expires @link.ExpiresUtc.ToLocalTime().ToString("g")</small></div><div class="share-item-actions"><button class="button small ghost" @onclick="() => Copy(url)">Copy</button><a class="button small ghost" href="/watch/@link.Token">Open</a><button class="button small danger" @onclick="() => Revoke(link.Token)">Revoke</button></div></article> }</div> }
+}
+@code {
+    private IReadOnlyList<ShareLink> links = [];
+    protected override async Task OnInitializedAsync() { if (Session.Session is not null) links = await ShareService.GetActiveAsync(Session.OwnerKey); }
+    private Task Copy(string url) => Js.InvokeVoidAsync("navigator.clipboard.writeText", url).AsTask();
+    private async Task Revoke(string token) { await ShareService.RevokeAsync(token, Session.OwnerKey); links = await ShareService.GetActiveAsync(Session.OwnerKey); }
+}

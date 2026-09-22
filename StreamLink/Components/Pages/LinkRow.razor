@@ -1,0 +1,2 @@
+<div class="link-row"><div><strong>@Label</strong><code>@Url</code></div><div class="link-actions"><a class="button small ghost" href="@Url" target="_blank">Open</a><button class="button small ghost" @onclick="Copy">Copy</button></div></div>
+@code { [Parameter] public string Label { get; set; } = ""; [Parameter] public string Url { get; set; } = ""; [Inject] private IJSRuntime Js { get; set; } = default!; private Task Copy() => Js.InvokeVoidAsync("navigator.clipboard.writeText", Url).AsTask(); }
