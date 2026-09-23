@@ -51,6 +51,10 @@ h2 {
   font-family: "Space Grotesk", sans-serif;
   letter-spacing: -1.8px;
 }
+h1,
+h2:focus {
+  outline: none;
+}
 h1 {
   font-size: clamp(2rem, 5vw, 3.5rem);
   line-height: 1;

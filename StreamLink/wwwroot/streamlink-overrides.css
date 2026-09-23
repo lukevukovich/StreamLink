@@ -108,7 +108,7 @@
 .nav-label {
   margin-left: 2px !important;
   margin-top: 1px;
-  margin-right: 1px;
+  margin-right: 2px;
 }
 .logout-button {
   white-space: nowrap;
@@ -341,7 +341,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  min-height: 34px;
+  min-height: 38px;
 }
 .topbar-actions > .nav-pill,
 .topbar-actions > .profile-pill,
@@ -350,8 +350,8 @@
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  height: 34px;
-  min-height: 34px;
+  height: 38px;
+  min-height: 38px;
   margin: 0;
   line-height: 1;
   vertical-align: middle;
@@ -365,8 +365,8 @@
   min-width: 76px;
 }
 .topbar-actions > .profile-pill {
-  width: 34px;
-  min-width: 34px;
+  width: 38px;
+  min-width: 38px;
   padding: 0;
 }
 .topbar-actions > .logout-button {
@@ -399,8 +399,8 @@
   .topbar-actions > .nav-pill,
   .topbar-actions > .profile-pill,
   .topbar-actions > .logout-button {
-    width: 34px;
-    min-width: 34px;
+    width: 38px;
+    min-width: 38px;
     padding: 0;
   }
   .topbar-actions > .nav-pill .nav-label,
