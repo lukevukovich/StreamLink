@@ -10,7 +10,12 @@
 <PageTitle>@(Session.IsAuthenticated ? "Welcome · streamlink" : "Sign in · streamlink")</PageTitle>
 @if (Session.IsAuthenticated)
 {
-<div class="welcome-page"><div class="eyebrow"><span class="wordmark"><span>stream</span><span>link</span></span></div><h1>Ready when you are.</h1><p class="muted">Your live TV library is waiting. Jump back in or explore your account.</p><div class="welcome-actions"><a class="button primary" href="/tv">Open Live TV <span>→</span></a><a class="button ghost" href="/shares">Manage shares</a></div></div>
+<div class="welcome-page"><div class="eyebrow"><span class="wordmark"><span>stream</span><span>link</span></span></div><h1>Ready when you are.</h1><p class="muted">Your live TV library is waiting. Browse categories, reopen a shared stream, or manage your account.</p><div class="welcome-grid">
+	<a class="welcome-card" href="/tv"><span class="welcome-card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2.5"/><path d="m10 9 5 2.5-5 2.5zM8 22h8M12 18v4"/></svg></span><strong>Live TV</strong><span>Browse live categories and find a channel to watch.</span><span class="welcome-card-link">Explore TV <b>→</b></span></a>
+	<a class="welcome-card" href="/shares"><span class="welcome-card-icon"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"/></svg></span><strong>Shares</strong><span>Create, copy, and manage your shared stream links.</span><span class="welcome-card-link">Manage shares <b>→</b></span></a>
+	<a class="welcome-card" href="/watch"><span class="welcome-card-icon"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7"/><path d="M14 10a5 5 0 0 0-7.1 0l-3 3A5 5 0 0 0 11 20.1l1.7-1.7"/></svg></span><strong>Watch a stream</strong><span>Paste a family or friend’s streamlink URL or share code.</span><span class="welcome-card-link">Open a link <b>→</b></span></a>
+	<a class="welcome-card" href="/account"><span class="welcome-card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.8-3.4 3-5.1 6.5-5.1s5.7 1.7 6.5 5.1"/></svg></span><strong>Profile</strong><span>View account status and connection information.</span><span class="welcome-card-link">View profile <b>→</b></span></a>
+</div></div>
 }
 else
 {
@@ -64,7 +69,7 @@ else
 			}
 		}
 		catch (JSException) { error = "The browser could not save this session. Please allow site storage and try again."; }
-		catch (Exception) { error = "The provider responded, but StreamLink could not complete the sign-in. Please try again."; }
+		catch (Exception) { error = "The provider responded, but streamlink could not complete the sign-in. Please try again."; }
 		finally { busy = false; }
 	}
 

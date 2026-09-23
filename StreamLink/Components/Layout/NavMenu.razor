@@ -1,11 +1,13 @@
 ﻿@inject SessionState Session
+@inject NavigationManager Navigation
 @implements IDisposable
 @if (Session.IsAuthenticated)
 {
     <NavLink class="nav-pill nav-live" href="/tv" Match="NavLinkMatch.Prefix"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2.5"/><path d="m10 9 5 2.5-5 2.5zM8 22h8M12 18v4"/></svg></span><span class="nav-label">Live TV</span></NavLink>
     <NavLink class="nav-pill nav-shares" href="/shares" Match="NavLinkMatch.All"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"/></svg></span><span class="nav-label">Shares</span></NavLink>
-    <NavLink class="profile-pill" href="/account" Match="NavLinkMatch.All" aria-label="Open account"><span class="profile-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.8-3.4 3-5.1 6.5-5.1s5.7 1.7 6.5 5.1"/></svg></span></NavLink>
 }
+<NavLink class="nav-pill nav-watch" href="/watch" Match="NavLinkMatch.Prefix"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7"/><path d="M14 10a5 5 0 0 0-7.1 0l-3 3A5 5 0 0 0 11 20.1l1.7-1.7"/></svg></span><span class="nav-label">Watch</span></NavLink>
+<NavLink class="profile-pill" href="@(Session.IsAuthenticated ? "/account" : "/login")" Match="NavLinkMatch.All" aria-label="@(Session.IsAuthenticated ? "Open account" : "Sign in")"><span class="profile-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.8-3.4 3-5.1 6.5-5.1s5.7 1.7 6.5 5.1"/></svg></span></NavLink>
 
 @code {
     protected override void OnInitialized() => Session.Changed += Refresh;

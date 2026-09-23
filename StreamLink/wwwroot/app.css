@@ -109,6 +109,7 @@ h1 {
   width: min(1180px, 100%);
   margin: auto;
   padding: clamp(28px, 5vw, 64px) clamp(18px, 5vw, 72px) 90px;
+  padding-bottom: 0px;
 }
 .login-page {
   min-height: calc(100dvh - 72px);
@@ -284,6 +285,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 12px;
+  margin-bottom: 34px !important;
 }
 .category-card {
   min-height: 64px;
@@ -344,6 +346,7 @@ h1 {
 .channel-list {
   display: grid;
   gap: 7px;
+  margin-bottom: 34px !important;
 }
 .channel-row {
   display: flex;
@@ -543,8 +546,14 @@ h1 {
 .public-watch {
   width: 100%;
   max-width: 1180px;
-  margin: auto;
+  margin: 0 auto;
   padding: 0;
+}
+.public-watch.watch-playing .page-heading {
+  margin-bottom: 18px;
+}
+.public-watch.watch-entry {
+  padding-top: 0;
 }
 .public-watch .public-player {
   width: 100%;
@@ -553,6 +562,9 @@ h1 {
   width: 100%;
   height: auto;
   object-fit: contain;
+}
+.public-watch.watch-playing .public-player {
+  margin-bottom: 0;
 }
 .share-list {
   display: grid;

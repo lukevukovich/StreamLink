@@ -1,14 +1,26 @@
 @page "/watch/{Token}"
+@page "/watch"
 @rendermode InteractiveServer
 @inject IShareLinkService Shares
+@inject NavigationManager Navigation
 <PageTitle>@(playback is null ? "Watch · streamlink" : $"{playback.Link.ChannelName} · streamlink")</PageTitle>
-<div class="public-watch">
-	@if (state == "missing") { <h1>Link unavailable</h1><p class="muted">This share link does not exist.</p> }
+<div class="public-watch @(playback is null ? "watch-entry" : "watch-playing")">
+	@if (string.IsNullOrEmpty(Token))
+	{
+		<div class="page-heading compact watch-entry-heading"><div><div class="eyebrow">WATCH A STREAM</div><h1>Open a shared stream.</h1><p class="muted page-intro">Paste a streamlink share URL or its code. The link needs to be active to play.</p></div></div>
+		<div class="watch-entry-form">
+			<input class="search" placeholder="Paste share link or code" aria-label="Share link or code" @bind="shareInput" @bind:event="oninput" @onkeydown="HandleKeyDown" />
+			<button class="button primary" disabled="@string.IsNullOrWhiteSpace(shareInput)" @onclick="OpenShare">Open stream <span>→</span></button>
+		</div>
+		@if (!string.IsNullOrWhiteSpace(inputError)) { <div class="alert watch-entry-error">@inputError</div> }
+	}
+	else if (state == "loading") { <div class="loading-card">Checking share link…</div> }
+	else if (state == "missing") { <h1>Link unavailable</h1><p class="muted">This share link does not exist.</p> }
 	else if (state == "revoked") { <h1>Link revoked</h1><p class="muted">This share link is no longer available.</p> }
 	else if (state == "expired") { <h1>Link expired</h1><p class="muted">This share link has passed its expiration time.</p> }
 	else if (playback is not null)
 	{
-		<div class="page-heading compact"><div><div class="eyebrow">WATCH SHARE LINK</div><h1>@playback.Link.ChannelName</h1><p class="muted page-intro">@playback.Link.CategoryName</p></div><span class="count-badge"><span class="live-dot">LIVE</span></span></div>
+		<div class="page-heading compact"><div><div class="eyebrow">WATCH A STREAM</div><h1>@playback.Link.ChannelName</h1><p class="muted page-intro">@playback.Link.CategoryName</p></div></div>
 		<section class="player-card public-player"><video id="shared-stream-player" controls playsinline preload="metadata" src="@playback.StreamUrl"></video><div class="player-caption"><span class="live-dot">LIVE</span> Shared playback</div></section>
 	}
 	else { <h1>Playback unavailable</h1><p class="muted">The stream URL could not be restored. Create a new share link from the channel page.</p> }
@@ -16,14 +28,68 @@
 @code {
 	[Parameter] public string Token { get; set; } = "";
 	private SharePlayback? playback;
-	private string state = "loading";
-	protected override async Task OnInitializedAsync()
+	private string state = "entry";
+	private string shareInput = "";
+	private string? inputError;
+	private string? loadedToken;
+	private void OpenShare()
 	{
-		var link = await Shares.GetAsync(Token);
-		if (link is null) { state = "missing"; return; }
-		if (link.Revoked) { state = "revoked"; return; }
-		if (link.ExpiresUtc <= DateTime.UtcNow) { state = "expired"; return; }
-		playback = await Shares.GetPlaybackAsync(Token);
-		state = "ready";
+		inputError = null;
+		var candidate = shareInput.Trim().TrimEnd('.', ',', ';', '!', '?', ')', ']', '}');
+		if (Uri.TryCreate(candidate, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+		{
+			var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+			var watchIndex = Array.FindIndex(segments, segment => segment.Equals("watch", StringComparison.OrdinalIgnoreCase));
+			candidate = watchIndex >= 0 && watchIndex + 1 < segments.Length
+				? Uri.UnescapeDataString(segments[watchIndex + 1])
+				: segments.Length > 0 ? Uri.UnescapeDataString(segments[^1]) : "";
+		}
+		else
+		{
+			candidate = Uri.UnescapeDataString(candidate.Trim('/'));
+			if (candidate.StartsWith("watch/", StringComparison.OrdinalIgnoreCase)) candidate = candidate[6..].Trim('/');
+		}
+
+		if (string.IsNullOrWhiteSpace(candidate) || candidate.Contains('/') || candidate.Contains('?') || candidate.Contains('#'))
+		{
+			inputError = "Enter a streamlink watch URL or its share code.";
+			return;
+		}
+
+		Navigation.NavigateTo($"/watch/{Uri.EscapeDataString(candidate)}");
+	}
+	private Task HandleKeyDown(KeyboardEventArgs args)
+	{
+		if (args.Key == "Enter") OpenShare();
+		return Task.CompletedTask;
+	}
+	protected override async Task OnParametersSetAsync()
+	{
+		var token = Token?.Trim();
+		if (string.IsNullOrWhiteSpace(token))
+		{
+			loadedToken = null;
+			playback = null;
+			state = "entry";
+			return;
+		}
+
+		if (string.Equals(token, loadedToken, StringComparison.Ordinal)) return;
+		loadedToken = token;
+		playback = null;
+		state = "loading";
+		try
+		{
+			var link = await Shares.GetAsync(token);
+			if (link is null) { state = "missing"; return; }
+			if (link.Revoked) { state = "revoked"; return; }
+			if (link.ExpiresUtc <= DateTime.UtcNow) { state = "expired"; return; }
+			playback = await Shares.GetPlaybackAsync(token);
+			state = playback is null ? "unavailable" : "ready";
+		}
+		catch (Exception)
+		{
+			state = "unavailable";
+		}
 	}
 }
