@@ -22,9 +22,10 @@ else
             <div class="player-footer">
                 <div class="player-live-details">
                     <span class="live-dot">LIVE</span>
+                    <span class="player-method" title="Playback method" hidden></span>
                     <div class="player-status" role="status" aria-live="polite" hidden><span class="player-spinner" aria-hidden="true"></span><span class="player-status-text"></span></div>
                 </div>
-                <a class="player-external-link" href="@(links.HlsAllowed ? playbackUrl : tsPlaybackUrl)" target="_blank" rel="noopener noreferrer">Open in external player <span aria-hidden="true">↗</span></a>
+                <a class="player-external-link" href="@(links.HlsAllowed ? playbackUrl : tsPlaybackUrl)" target="_blank" rel="noopener noreferrer">Open in external player</a>
             </div>
             <div class="player-error" role="alert" hidden></div>
         </section>

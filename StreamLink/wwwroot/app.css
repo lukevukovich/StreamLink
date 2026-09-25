@@ -439,6 +439,14 @@ h1 {
   align-items: center;
   gap: 9px;
 }
+.player-method {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+.player-method[hidden] {
+  display: none;
+}
 .player-external-link {
   display: inline-flex;
   align-items: center;

@@ -11,9 +11,9 @@ window.streamlinkPlayer = {
     const video = document.getElementById(elementId);
     if (!video) return;
     const sources = [
-      compatibleSource && { kind: "compatible", url: compatibleSource },
       hlsSource && { kind: "hls", url: hlsSource },
       tsSource && { kind: "ts", url: tsSource },
+      compatibleSource && { kind: "compatible", url: compatibleSource },
     ]
       .filter(Boolean)
       .map((source) => ({
@@ -34,6 +34,9 @@ window.streamlinkPlayer = {
       .querySelector(".player-status");
     const statusText = status.querySelector(".player-status-text");
     const error = video.closest(".player-card").querySelector(".player-error");
+    const method = video
+      .closest(".player-card")
+      .querySelector(".player-method");
     let engine;
     let index = 0;
     let attempt = 0;
@@ -81,6 +84,7 @@ window.streamlinkPlayer = {
         start();
       } else {
         clearTimeout(startupTimer);
+        method.hidden = true;
         showError(
           `Unable to play this channel: ${reason} If it plays in VLC, check the server log for FFmpeg/provider errors.`,
         );
@@ -110,15 +114,20 @@ window.streamlinkPlayer = {
       stop();
       const current = ++attempt;
       const source = sources[index];
+      method.textContent = { hls: "HLS", ts: "MPEG-TS", compatible: "FFmpeg" }[
+        source.kind
+      ];
+      method.hidden = false;
       message("Connecting…");
+      const timeoutMs = source.kind === "compatible" ? 25000 : 8000;
       startupTimer = setTimeout(() => {
         if (
           !disposed &&
           current === attempt &&
           video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
         )
-          fail("no video arrived in 25 seconds.");
-      }, 25000);
+          fail(`no video arrived in ${timeoutMs / 1000} seconds.`);
+      }, timeoutMs);
 
       try {
         if (source.kind === "hls") {
