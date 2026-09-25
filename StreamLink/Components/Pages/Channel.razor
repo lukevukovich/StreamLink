@@ -3,6 +3,7 @@
 @inject SessionState Session
 @inject IStreamUrlService Urls
 @inject IShareLinkService Shares
+@inject IStreamProxyService Proxy
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
 
@@ -12,9 +13,21 @@ else
 {
     <a class="back-link" href="/tv">← Live TV</a>
     <section class="detail-hero"><div><div class="eyebrow">NOW AVAILABLE</div><h1>@ChannelName</h1><p class="muted">@CategoryName · Stream @StreamId</p></div></section>
-    @if (links is not null && links.HlsAllowed)
+    @if (links is not null && (links.HlsAllowed || links.TsAllowed))
     {
-        <section class="player-card"><video id="stream-player" controls playsinline preload="metadata" src="@links.HlsUrl"></video><div class="player-caption"><span class="live-dot">LIVE</span> HLS playback</div></section>
+        <section class="player-card">
+            <div class="player-screen">
+                <video id="stream-player" controls playsinline preload="metadata"></video>
+            </div>
+            <div class="player-footer">
+                <div class="player-live-details">
+                    <span class="live-dot">LIVE</span>
+                    <div class="player-status" role="status" aria-live="polite" hidden><span class="player-spinner" aria-hidden="true"></span><span class="player-status-text"></span></div>
+                </div>
+                <a class="player-external-link" href="@(links.HlsAllowed ? playbackUrl : tsPlaybackUrl)" target="_blank" rel="noopener noreferrer">Open in external player <span aria-hidden="true">↗</span></a>
+            </div>
+            <div class="player-error" role="alert" hidden></div>
+        </section>
     }
     <section class="panel"><div class="section-title"><div><div class="eyebrow">STREAM LINKS</div><h2>Choose a format</h2></div><button class="button ghost" @onclick="CreateShare">Share</button></div>
         @if (links is not null) { @if (links.HlsAllowed) { <LinkRow Label="HLS · .m3u8" Url="@links.HlsUrl" /> } @if (links.TsAllowed) { <LinkRow Label="MPEG-TS · .ts" Url="@links.TsUrl" /> } }
@@ -26,7 +39,21 @@ else
     [Parameter] public int StreamId { get; set; }
     [SupplyParameterFromQuery(Name = "name")] public string ChannelName { get; set; } = "Channel";
     [SupplyParameterFromQuery(Name = "category")] public string CategoryName { get; set; } = "Live TV";
-    private StreamLinks? links; private string? shareUrl;
-    protected override void OnInitialized() { if (Session.Session is not null) links = Urls.BuildLinks(Session.Session, StreamId); }
+    private StreamLinks? links; private string? shareUrl; private string? playbackUrl; private string? tsPlaybackUrl; private int? loadedStreamId;
+    protected override void OnParametersSet()
+    {
+        if (Session.Session is null) { links = null; playbackUrl = null; tsPlaybackUrl = null; return; }
+        if (loadedStreamId == StreamId) return;
+        loadedStreamId = StreamId;
+        links = Urls.BuildLinks(Session.Session, StreamId);
+        var token = Proxy.CreatePrivateToken(Session.Session, StreamId);
+        playbackUrl = links.HlsAllowed ? $"/stream/{token}/manifest.m3u8" : null;
+        tsPlaybackUrl = links.TsAllowed ? $"/stream/{token}/live.ts" : null;
+        shareUrl = null;
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (playbackUrl is not null || tsPlaybackUrl is not null) await Js.InvokeVoidAsync("streamlinkPlayer.load", "stream-player", playbackUrl, tsPlaybackUrl, tsPlaybackUrl is null ? null : tsPlaybackUrl.Replace("/live.ts", "/compatible.ts"));
+    }
     private async Task CreateShare() { if (Session.Session is null) return; var link = await Shares.CreateAsync(Session.Session, Session.OwnerKey, new XtreamChannel { StreamId = StreamId, Name = ChannelName }, CategoryName, ShareExpiration.EightHours); shareUrl = Navigation.ToAbsoluteUri($"/watch/{link.Token}").ToString(); }
 }

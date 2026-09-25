@@ -28,7 +28,16 @@ public interface IStreamProxyService
 {
     string CreatePrivateToken(XtreamSession session, int streamId);
     Task<StreamProxyResult?> GetManifestAsync(string token, CancellationToken cancellationToken = default);
-    Task<StreamProxyResult?> GetResourceAsync(string token, string resourceToken, string? queryString, CancellationToken cancellationToken = default);
+    Task<StreamProxyResourceResult?> GetResourceAsync(string token, string resourceToken, CancellationToken cancellationToken = default);
+    Task<StreamProxyLiveResult?> GetLiveTsAsync(string token, CancellationToken cancellationToken = default);
 }
 
 public sealed record StreamProxyResult(byte[] Content, string ContentType);
+public sealed record StreamProxyResourceResult(byte[]? Content, string ContentType, HttpResponseMessage? Upstream) : IDisposable
+{
+    public void Dispose() => Upstream?.Dispose();
+}
+public sealed record StreamProxyLiveResult(HttpResponseMessage Response) : IAsyncDisposable
+{
+    public ValueTask DisposeAsync() { Response.Dispose(); return ValueTask.CompletedTask; }
+}

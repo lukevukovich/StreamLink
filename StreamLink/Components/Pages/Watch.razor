@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @inject IShareLinkService Shares
 @inject NavigationManager Navigation
+@inject IJSRuntime Js
 <PageTitle>@(playback is null ? "Watch · streamlink" : $"{playback.Link.ChannelName} · streamlink")</PageTitle>
 <div class="public-watch @(playback is null ? "watch-entry" : "watch-playing")">
 	@if (string.IsNullOrEmpty(Token))
@@ -20,8 +21,20 @@
 	else if (state == "expired") { <h1>Link expired</h1><p class="muted">This share link has passed its expiration time.</p> }
 	else if (playback is not null)
 	{
-		<div class="page-heading compact"><div><div class="eyebrow">WATCH A STREAM</div><h1>@playback.Link.ChannelName</h1><p class="muted page-intro">@playback.Link.CategoryName</p></div></div>
-		<section class="player-card public-player"><video id="shared-stream-player" controls playsinline preload="metadata" src="@playback.StreamUrl"></video><div class="player-caption"><span class="live-dot">LIVE</span> Shared playback</div></section>
+		<div class="page-heading compact"><div><div class="eyebrow">WATCH A STREAM</div><h1>@playback.Link.ChannelName</h1><p class="muted page-intro">@playback.Link.CategoryName</p><p class="share-expiry">Share expires <time class="local-time" datetime="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")" data-utc="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")">@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("MMM d, yyyy 'at' h:mm tt 'UTC'")</time></p></div></div>
+		<section class="player-card public-player">
+			<div class="player-screen">
+				<video id="shared-stream-player" controls playsinline preload="metadata"></video>
+			</div>
+			<div class="player-footer">
+				<div class="player-live-details">
+					<span class="live-dot">LIVE</span>
+					<div class="player-status" role="status" aria-live="polite" hidden><span class="player-spinner" aria-hidden="true"></span><span class="player-status-text"></span></div>
+				</div>
+				<a class="player-external-link" href="@($"/stream/{Uri.EscapeDataString(Token)}/{(IsTsOnly ? "live.ts" : "manifest.m3u8")}")" target="_blank" rel="noopener noreferrer">Open in external player <span aria-hidden="true">↗</span></a>
+			</div>
+			<div class="player-error" role="alert" hidden></div>
+		</section>
 	}
 	else { <h1>Playback unavailable</h1><p class="muted">The stream URL could not be restored. Create a new share link from the channel page.</p> }
 </div>
@@ -32,6 +45,16 @@
 	private string shareInput = "";
 	private string? inputError;
 	private string? loadedToken;
+	private bool IsTsOnly => playback is not null && new Uri(playback.StreamUrl).AbsolutePath.EndsWith(".ts", StringComparison.OrdinalIgnoreCase);
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (playback is not null) await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".local-time");
+		if (playback is not null)
+		{
+			var prefix = $"/stream/{Uri.EscapeDataString(Token)}";
+			await Js.InvokeVoidAsync("streamlinkPlayer.load", "shared-stream-player", IsTsOnly ? null : $"{prefix}/manifest.m3u8", playback.TsUrl is null ? null : $"{prefix}/live.ts", playback.TsUrl is null ? null : $"{prefix}/compatible.ts");
+		}
+	}
 	private void OpenShare()
 	{
 		inputError = null;
@@ -81,15 +104,18 @@
 		try
 		{
 			var link = await Shares.GetAsync(token);
+			if (!string.Equals(token, loadedToken, StringComparison.Ordinal)) return;
 			if (link is null) { state = "missing"; return; }
 			if (link.Revoked) { state = "revoked"; return; }
 			if (link.ExpiresUtc <= DateTime.UtcNow) { state = "expired"; return; }
-			playback = await Shares.GetPlaybackAsync(token);
+			var result = await Shares.GetPlaybackAsync(token);
+			if (!string.Equals(token, loadedToken, StringComparison.Ordinal)) return;
+			playback = result;
 			state = playback is null ? "unavailable" : "ready";
 		}
 		catch (Exception)
 		{
-			state = "unavailable";
+			if (string.Equals(token, loadedToken, StringComparison.Ordinal)) state = "unavailable";
 		}
 	}
 }
