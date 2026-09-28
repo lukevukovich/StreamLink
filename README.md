@@ -31,3 +31,16 @@ Treat direct URLs and downloaded `.m3u` launcher files like passwords. Delete do
 The app stores shares in SQLite (`ConnectionStrings:StreamLink`, default `Data Source=streamlink.db`). Share provider URLs are protected at rest using ASP.NET Core Data Protection; keys are under `StreamLink/App_Data/keys`. The browser stores a server-protected session in local storage. Keep the database and keys private and stable across deployments; losing keys can invalidate saved sessions/shares. This protection **does not** hide URLs from anyone opening a valid share page. No FFmpeg installation or configuration is used.
 
 Build with `dotnet build .\StreamLink\StreamLink.csproj`. The app performs provider API requests for login and channel listings, but has no media playback libraries or `/stream/` endpoints. Old proxy URLs stop working after upgrading. Provider availability, output formats and codec support remain outside StreamLink's control.
+
+## Tests
+
+The sibling `StreamLink.Tests` project is linked to the app through a project reference; both projects are included in the root `StreamLink.sln`. From the repository root, run:
+
+```powershell
+dotnet test .\StreamLink.sln -c Release
+dotnet test .\StreamLink.sln -c Release --collect:"XPlat Code Coverage"
+```
+
+The xUnit suite covers Xtream login/list parsing, stream URL validation and formats, protected sessions, SQLite share limits/reuse/revocation/playback, redirect safety and share revalidation, the external-link API, and prerendered page privacy. HTTP providers are stubbed; integration tests use temporary databases and data-protection keys, not your real provider or share database. Coverage output is written to `TestResults/` (ignored by Git). Browser-side JavaScript behavior and interactive Blazor hydration are not covered by these server-side tests; validate player launching and clipboard actions on target devices as well.
+
+If an app process has locked the Debug executable on Windows, stop it or use `-c Release` as shown above.
