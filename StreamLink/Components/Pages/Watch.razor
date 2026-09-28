@@ -2,16 +2,17 @@
 @page "/watch"
 @rendermode InteractiveServer
 @inject IShareLinkService Shares
+@inject ExternalLinkService ExternalLinks
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
-<PageTitle>@(playback is null ? "Watch · streamlink" : $"{playback.Link.ChannelName} · streamlink")</PageTitle>
-<div class="public-watch @(playback is null ? "watch-entry" : "watch-playing")">
+<PageTitle>@(playback is null ? "Watch · StreamLink" : $"{playback.Link.ChannelName} · StreamLink")</PageTitle>
+<div class="public-watch @(playback is null ? "watch-entry" : "watch-ready")">
 	@if (string.IsNullOrEmpty(Token))
 	{
-		<div class="page-heading compact watch-entry-heading"><div><div class="eyebrow">WATCH A STREAM</div><h1>Open a shared stream.</h1><p class="muted page-intro">Paste a streamlink share URL or its code. The link needs to be active to play.</p></div></div>
+		<div class="page-heading compact watch-entry-heading"><div><div class="eyebrow">OPEN A STREAM</div><h1>Open a shared link.</h1><p class="muted page-intro">Paste a StreamLink share URL or code to open the provider stream in an external player.</p></div></div>
 		<div class="watch-entry-form">
 			<input class="search" placeholder="Paste share link or code" aria-label="Share link or code" @bind="shareInput" @bind:event="oninput" @onkeydown="HandleKeyDown" />
-			<button class="button primary" disabled="@string.IsNullOrWhiteSpace(shareInput)" @onclick="OpenShare">Open stream <span>→</span></button>
+			<button class="button primary" disabled="@string.IsNullOrWhiteSpace(shareInput)" @onclick="OpenShare">Open link <span>→</span></button>
 		</div>
 		@if (!string.IsNullOrWhiteSpace(inputError)) { <div class="alert watch-entry-error">@inputError</div> }
 	}
@@ -21,40 +22,22 @@
 	else if (state == "expired") { <h1>Link expired</h1><p class="muted">This share link has passed its expiration time.</p> }
 	else if (playback is not null)
 	{
-		<div class="page-heading compact"><div><div class="eyebrow">WATCH A STREAM</div><h1>@playback.Link.ChannelName</h1><p class="muted page-intro">@playback.Link.CategoryName</p><p class="share-expiry">Share expires <time class="local-time" datetime="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")" data-utc="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")">@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("MMM d, yyyy 'at' h:mm tt 'UTC'")</time></p></div></div>
-		<section class="player-card public-player">
-			<div class="player-screen">
-				<video id="shared-stream-player" controls playsinline preload="metadata"></video>
-			</div>
-			<div class="player-footer">
-				<div class="player-live-details">
-					<span class="live-dot">LIVE</span>
-					<span class="player-method" title="Playback method" hidden></span>
-					<div class="player-status" role="status" aria-live="polite" hidden><span class="player-spinner" aria-hidden="true"></span><span class="player-status-text"></span></div>
-				</div>
-				<a class="player-external-link" href="@($"/stream/{Uri.EscapeDataString(Token)}/{(IsTsOnly ? "live.ts" : "manifest.m3u8")}")" target="_blank" rel="noopener noreferrer">Open in external player</a>
-			</div>
-			<div class="player-error" role="alert" hidden></div>
-		</section>
+		<section class="detail-hero"><div><div class="eyebrow">OPEN A STREAM</div><h1>@playback.Link.ChannelName</h1><p class="muted detail-subtitle"><span class="live-dot">LIVE</span><span>@playback.Link.CategoryName</span></p><p class="share-expiry">Share expires <time class="local-time" datetime="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")" data-utc="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")">@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("MMM d, yyyy 'at' h:mm tt 'UTC'")</time></p></div></section>
+		<ExternalStreamActions Grant="@externalGrant" ChannelName="@playback.Link.ChannelName" />
 	}
-	else { <h1>Playback unavailable</h1><p class="muted">The stream URL could not be restored. Create a new share link from the channel page.</p> }
+	else { <h1>Link unavailable</h1><p class="muted">The stream URL could not be restored. Create a new share link from the channel page.</p> }
 </div>
 @code {
 	[Parameter] public string Token { get; set; } = "";
 	private SharePlayback? playback;
+	private string externalGrant = "";
 	private string state = "entry";
 	private string shareInput = "";
 	private string? inputError;
 	private string? loadedToken;
-	private bool IsTsOnly => playback is not null && new Uri(playback.StreamUrl).AbsolutePath.EndsWith(".ts", StringComparison.OrdinalIgnoreCase);
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		if (playback is not null) await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".local-time");
-		if (playback is not null)
-		{
-			var prefix = $"/stream/{Uri.EscapeDataString(Token)}";
-			await Js.InvokeVoidAsync("streamlinkPlayer.load", "shared-stream-player", IsTsOnly ? null : $"{prefix}/manifest.m3u8", playback.TsUrl is null ? null : $"{prefix}/live.ts", playback.TsUrl is null ? null : $"{prefix}/compatible.ts");
-		}
 	}
 	private void OpenShare()
 	{
@@ -76,7 +59,7 @@
 
 		if (string.IsNullOrWhiteSpace(candidate) || candidate.Contains('/') || candidate.Contains('?') || candidate.Contains('#'))
 		{
-			inputError = "Enter a streamlink watch URL or its share code.";
+			inputError = "Enter a StreamLink watch URL or its share code.";
 			return;
 		}
 
@@ -112,6 +95,7 @@
 			var result = await Shares.GetPlaybackAsync(token);
 			if (!string.Equals(token, loadedToken, StringComparison.Ordinal)) return;
 			playback = result;
+			if (playback is not null) externalGrant = ExternalLinks.CreateShareGrant(token);
 			state = playback is null ? "unavailable" : "ready";
 		}
 		catch (Exception)

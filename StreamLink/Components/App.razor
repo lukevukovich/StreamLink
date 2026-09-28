@@ -4,8 +4,9 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
     <base href="/" />
-    <link rel="stylesheet" href="app.css?v=12" />
+    <link rel="stylesheet" href="app.css?v=23" />
     <link rel="stylesheet" href="streamlink-overrides.css" />
     <link rel="stylesheet" href="StreamLink.styles.css" />
     <meta name="theme-color" content="#07181b" />
@@ -17,9 +18,7 @@
 
 <body>
     <Routes @rendermode="InteractiveServer" />
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.8.2/dist/mpegts.js"></script>
-    <script src="js/player.js?v=14"></script>
+    <script src="js/external.js?v=13"></script>
     <script>
         window.streamlinkTime = {
             format: (utcValue) => {

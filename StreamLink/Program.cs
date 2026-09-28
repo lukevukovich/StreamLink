@@ -1,15 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
-using System.Text;
 using StreamLink.Components;
 using StreamLink.Data;
 using StreamLink.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Xtream credentials are sent in the provider query string. Never emit those URLs to logs.
+// Xtream credentials may appear in provider URLs. Never emit those URLs to logs.
 builder.Logging.AddFilter("System.Net.Http.HttpClient.Xtream", LogLevel.Warning);
-builder.Logging.AddFilter("System.Net.Http.HttpClient.StreamProxy", LogLevel.Warning);
+builder.Logging.AddFilter("System.Net.Http.HttpClient.ExternalLinkRedirect", LogLevel.Warning);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -18,20 +17,15 @@ var keyDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data",
 Directory.CreateDirectory(keyDirectory);
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keyDirectory)).SetApplicationName("StreamLink");
 builder.Services.AddHttpClient("Xtream").ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(30));
-// IPTV providers commonly redirect live manifests and segments to a CDN or edge server.
-builder.Services.AddHttpClient("StreamProxy", client => client.Timeout = Timeout.InfiniteTimeSpan).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-    AllowAutoRedirect = true,
-    MaxAutomaticRedirections = 10
-});
+builder.Services.AddHttpClient("ExternalLinkRedirect", client => client.Timeout = TimeSpan.FromSeconds(12))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
 builder.Services.AddDbContextFactory<StreamLinkDbContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("StreamLink") ?? "Data Source=streamlink.db"));
 builder.Services.AddScoped<SessionState>();
 builder.Services.AddScoped<SessionPersistence>();
 builder.Services.AddScoped<IXtreamApiService, XtreamApiService>();
 builder.Services.AddScoped<IStreamUrlService, StreamUrlService>();
 builder.Services.AddScoped<IShareLinkService, ShareLinkService>();
-builder.Services.AddScoped<IStreamProxyService, StreamProxyService>();
-builder.Services.AddScoped<LiveTranscodeService>();
+builder.Services.AddScoped<ExternalLinkService>();
 
 var app = builder.Build();
 
@@ -47,39 +41,23 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
-
-app.MapGet("/stream/{token}/manifest.m3u8", async (string token, IStreamProxyService proxy, CancellationToken cancellationToken) =>
+// No media is served through StreamLink.
+app.Use(async (context, next) =>
 {
-    var result = await proxy.GetManifestAsync(token, cancellationToken);
-    return result is null ? Results.NotFound() : Results.Bytes(result.Content, result.ContentType);
-});
-
-
-app.MapGet("/stream/{token}/resource/{resourceToken}", async (HttpContext context, string token, string resourceToken, IStreamProxyService proxy) =>
-{
-    using var result = await proxy.GetResourceAsync(token, resourceToken, context.RequestAborted);
-    if (result is null) { context.Response.StatusCode = StatusCodes.Status404NotFound; return; }
-    context.Response.ContentType = result.ContentType;
     context.Response.Headers.CacheControl = "no-store";
-    if (result.Content is not null) await context.Response.Body.WriteAsync(result.Content, context.RequestAborted);
-    else if (result.Upstream is not null)
-    {
-        await using var upstream = await result.Upstream.Content.ReadAsStreamAsync(context.RequestAborted);
-        await upstream.CopyToAsync(context.Response.Body, context.RequestAborted);
-    }
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    await next();
 });
 
-app.MapGet("/stream/{token}/live.ts", async (HttpContext context, string token, IStreamProxyService proxy) =>
+app.MapPost("/api/external-link", async (HttpContext context, ExternalLinkService links, ExternalLinkRequest request) =>
 {
-    await using var live = await proxy.GetLiveTsAsync(token, context.RequestAborted);
-    if (live is null) { context.Response.StatusCode = StatusCodes.Status502BadGateway; return; }
-    context.Response.ContentType = "video/mp2t";
-    context.Response.Headers.CacheControl = "no-store";
-    await using var upstream = await live.Response.Content.ReadAsStreamAsync(context.RequestAborted);
-    await upstream.CopyToAsync(context.Response.Body, context.RequestAborted);
+    if (request.Grant is null || request.Grant.Length > 8192 || !context.Request.Headers.TryGetValue("Origin", out var origin) ||
+        !Uri.TryCreate(origin.ToString(), UriKind.Absolute, out var source) ||
+        source.GetLeftPart(UriPartial.Authority) != $"{context.Request.Scheme}://{context.Request.Host}")
+        return Results.BadRequest();
+    var url = await links.ResolveAsync(request.Grant, context.RequestAborted);
+    return url is null ? Results.UnprocessableEntity() : Results.Json(new { url });
 });
-
-app.MapGet("/stream/{token}/compatible.ts", (HttpContext context, string token, LiveTranscodeService transcoder) => transcoder.StreamAsync(context, token));
 
 using (var scope = app.Services.CreateScope())
 {
@@ -91,3 +69,5 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+internal sealed record ExternalLinkRequest(string? Grant);

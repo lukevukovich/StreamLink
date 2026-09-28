@@ -6,13 +6,13 @@
 
 <div class="app-shell @(IsAuthScreen ? "auth-shell" : "")">
     <header class="topbar">
-        <a class="brand" href="@(Session.IsAuthenticated ? "/" : "/login")">stream<span>link</span></a>
+        <a class="brand" href="@(Session.IsAuthenticated ? "/" : "/login")">Stream<span>Link</span></a>
         <div class="topbar-actions"><NavMenu /></div>
     </header>
     <main class="content-wrap @(IsLoginRoute ? "auth-content" : "")">
         @if (!Session.IsHydrated)
         {
-            <div class="auth-loading"><div class="loading-mark">◌</div><span>Loading <span class="wordmark"><span>stream</span><span>link</span></span>…</span></div>
+            <div class="auth-loading"><div class="loading-mark">◌</div><span>Loading <span class="wordmark"><span>Stream</span><span>Link</span></span>…</span></div>
         }
         else
         {

@@ -1,2 +1,7 @@
-<div class="link-row"><div><strong>@Label</strong><code>@Url</code></div><div class="link-actions"><a class="button small ghost" href="@Url" target="_blank">Open</a><button class="button small ghost" @onclick="Copy">Copy</button></div></div>
-@code { [Parameter] public string Label { get; set; } = ""; [Parameter] public string Url { get; set; } = ""; [Inject] private IJSRuntime Js { get; set; } = default!; private Task Copy() => Js.InvokeVoidAsync("navigator.clipboard.writeText", Url).AsTask(); }
+@inject ExternalLinkService ExternalLinks
+<div class="link-row"><div><strong>@Label</strong><small>Resolve provider link when needed</small><span class="copy-status" role="status" hidden></span><input class="copy-select" type="text" readonly hidden aria-label="Resolved stream URL for manual copying" /></div><div class="link-actions"><button type="button" class="button small ghost" data-open-grant="@Grant">Open</button><button type="button" class="button small ghost" data-copy-grant="@Grant">Copy</button></div></div>
+@code {
+	[Parameter] public string Label { get; set; } = "";
+	[Parameter] public string Url { get; set; } = "";
+	private string Grant => ExternalLinks.CreateChannelGrant(Url);
+}

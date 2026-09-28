@@ -8,11 +8,22 @@ public sealed class StreamUrlService : IStreamUrlService
     {
         var baseUrl = session.ServerUrl;
         var info = session.ServerInfo;
-        if (!string.IsNullOrWhiteSpace(info.Url) && !string.IsNullOrWhiteSpace(info.Protocol))
+        if (!string.IsNullOrWhiteSpace(info.Url) &&
+            info.Protocol is not null &&
+            (info.Protocol.Equals("https", StringComparison.OrdinalIgnoreCase) || info.Protocol.Equals("http", StringComparison.OrdinalIgnoreCase)) &&
+            Uri.TryCreate($"{info.Protocol}://{info.Url}", UriKind.Absolute, out var provider) &&
+            provider.Scheme is "http" or "https" && string.IsNullOrEmpty(provider.UserInfo) &&
+            provider.AbsolutePath == "/" && string.IsNullOrEmpty(provider.Query) && string.IsNullOrEmpty(provider.Fragment))
         {
-            var port = info.Protocol.Equals("https", StringComparison.OrdinalIgnoreCase) ? info.HttpsPort : info.Port;
-            baseUrl = $"{info.Protocol}://{info.Url}" + (int.TryParse(port, out var parsed) && !((info.Protocol == "https" && parsed == 443) || (info.Protocol != "https" && parsed == 80)) ? $":{parsed}" : "");
+            var port = provider.Scheme == "https" ? info.HttpsPort : info.Port;
+            var builder = new UriBuilder(provider);
+            if (int.TryParse(port, out var parsed) && parsed is > 0 and <= 65535) builder.Port = parsed;
+            baseUrl = builder.Uri.GetLeftPart(UriPartial.Authority);
         }
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var origin) || origin.Scheme is not ("http" or "https") ||
+            !string.IsNullOrEmpty(origin.UserInfo) || !string.IsNullOrEmpty(origin.Query) || !string.IsNullOrEmpty(origin.Fragment))
+            throw new InvalidOperationException("The provider returned an invalid stream server URL.");
+        baseUrl = baseUrl.TrimEnd('/');
         var hls = $"{baseUrl}/live/{Uri.EscapeDataString(session.Username)}/{Uri.EscapeDataString(session.Password)}/{streamId}.m3u8";
         var ts = $"{baseUrl}/live/{Uri.EscapeDataString(session.Username)}/{Uri.EscapeDataString(session.Password)}/{streamId}.ts";
         var formats = session.UserInfo.AllowedOutputFormats.Select(x => x.ToLowerInvariant()).ToHashSet();

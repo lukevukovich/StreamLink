@@ -3,36 +3,58 @@
 @inject SessionState Session
 @inject IStreamUrlService Urls
 @inject IShareLinkService Shares
-@inject IStreamProxyService Proxy
+@inject ExternalLinkService ExternalLinks
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
 
-<PageTitle>@ChannelName · streamlink</PageTitle>
+<PageTitle>@ChannelName · StreamLink</PageTitle>
 @if (Session.Session is null) { <RedirectToLogin /> }
 else
 {
     <a class="back-link" href="/tv">← Live TV</a>
-    <section class="detail-hero"><div><div class="eyebrow">NOW AVAILABLE</div><h1>@ChannelName</h1><p class="muted">@CategoryName · Stream @StreamId</p></div></section>
+    <section class="detail-hero"><div><div class="eyebrow">NOW AVAILABLE</div><h1>@ChannelName</h1><p class="muted detail-subtitle"><span class="live-dot">LIVE</span><span>@CategoryName · Stream @StreamId</span></p></div></section>
     @if (links is not null && (links.HlsAllowed || links.TsAllowed))
     {
-        <section class="player-card">
-            <div class="player-screen">
-                <video id="stream-player" controls playsinline preload="metadata"></video>
-            </div>
-            <div class="player-footer">
-                <div class="player-live-details">
-                    <span class="live-dot">LIVE</span>
-                    <span class="player-method" title="Playback method" hidden></span>
-                    <div class="player-status" role="status" aria-live="polite" hidden><span class="player-spinner" aria-hidden="true"></span><span class="player-status-text"></span></div>
-                </div>
-                <a class="player-external-link" href="@(links.HlsAllowed ? playbackUrl : tsPlaybackUrl)" target="_blank" rel="noopener noreferrer">Open in external player</a>
-            </div>
-            <div class="player-error" role="alert" hidden></div>
-        </section>
+        <ExternalStreamActions Grant="@externalGrant" ChannelName="@ChannelName" />
     }
-    <section class="panel"><div class="section-title"><div><div class="eyebrow">STREAM LINKS</div><h2>Choose a format</h2></div><button class="button ghost" @onclick="CreateShare">Share</button></div>
+    else { <div class="unavailable-card">This provider does not allow a supported stream format for this channel.</div> }
+    <section class="panel share-panel" aria-label="Share this channel">
+        <div class="section-title">
+            <div><div class="eyebrow">SHARE</div><h2>Share this channel</h2></div>
+            @if (shareUrl is null)
+            {
+                <button type="button" class="button ghost" disabled="@(shareBusy || links is null || (!links.HlsAllowed && !links.TsAllowed))" aria-expanded="@showShareForm" aria-controls="share-settings" @onclick="ToggleShareForm">@(showShareForm ? "Hide settings" : "Share")</button>
+            }
+        </div>
+        @if (!string.IsNullOrWhiteSpace(shareUrl))
+        {
+            <div class="share-created" role="status" aria-live="polite">
+                <strong>Share link ready</strong>
+                <span class="copy-status" role="status" hidden></span>
+                <input type="text" readonly value="@shareUrl" aria-label="Share link" onclick="this.select()" />
+                <div class="share-created-actions"><button type="button" class="button small ghost" data-copy-input>Copy link</button><a class="button small ghost" href="@shareUrl">Open link →</a></div>
+                <small>Expires <time class="local-time" data-utc="@shareExpiresUtc.ToString("O")">@shareExpiresUtc.ToString("MMM d, yyyy 'at' h:mm tt 'UTC'")</time>@(reusedShare ? " · Existing share reused" : "")</small>
+            </div>
+        }
+        else if (showShareForm)
+        {
+            <div id="share-settings" class="share-form">
+                <label for="share-hours">Link lifetime</label>
+                <div class="share-form-controls">
+                    <select id="share-hours" class="search" @bind="shareHours" disabled="@shareBusy">
+                        <option value="1">1 hour</option><option value="2">2 hours</option><option value="4">4 hours</option>
+                        <option value="8">8 hours</option><option value="12">12 hours</option><option value="24">24 hours</option>
+                    </select>
+                    <button type="button" class="button primary" disabled="@shareBusy" @onclick="CreateShare">@(shareBusy ? "Creating…" : "Share")</button>
+                    <button type="button" class="button ghost" disabled="@shareBusy" @onclick="CancelShare">Cancel</button>
+                </div>
+                <p class="muted share-form-note">An existing active link for this channel keeps its original expiry.</p>
+                @if (!string.IsNullOrWhiteSpace(shareError)) { <div class="alert" role="alert">@shareError</div> }
+            </div>
+        }
+    </section>
+    <section class="panel"><div class="section-title"><div><div class="eyebrow">STREAM LINKS</div><h2>Choose a format</h2></div></div>
         @if (links is not null) { @if (links.HlsAllowed) { <LinkRow Label="HLS · .m3u8" Url="@links.HlsUrl" /> } @if (links.TsAllowed) { <LinkRow Label="MPEG-TS · .ts" Url="@links.TsUrl" /> } }
-        @if (!string.IsNullOrWhiteSpace(shareUrl)) { <div class="share-created"><strong>Share link ready</strong><span>@shareUrl</span><a href="@shareUrl">Open link →</a></div> }
     </section>
 }
 
@@ -40,21 +62,46 @@ else
     [Parameter] public int StreamId { get; set; }
     [SupplyParameterFromQuery(Name = "name")] public string ChannelName { get; set; } = "Channel";
     [SupplyParameterFromQuery(Name = "category")] public string CategoryName { get; set; } = "Live TV";
-    private StreamLinks? links; private string? shareUrl; private string? playbackUrl; private string? tsPlaybackUrl; private int? loadedStreamId;
+    private StreamLinks? links; private string? shareUrl; private string? shareError; private bool shareBusy; private bool showShareForm; private bool reusedShare; private int shareHours = 4; private DateTime shareExpiresUtc; private string externalGrant = ""; private int? loadedStreamId;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (shareUrl is not null) await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".share-created .local-time");
+    }
     protected override void OnParametersSet()
     {
-        if (Session.Session is null) { links = null; playbackUrl = null; tsPlaybackUrl = null; return; }
+        if (Session.Session is null) { links = null; loadedStreamId = null; return; }
         if (loadedStreamId == StreamId) return;
         loadedStreamId = StreamId;
         links = Urls.BuildLinks(Session.Session, StreamId);
-        var token = Proxy.CreatePrivateToken(Session.Session, StreamId);
-        playbackUrl = links.HlsAllowed ? $"/stream/{token}/manifest.m3u8" : null;
-        tsPlaybackUrl = links.TsAllowed ? $"/stream/{token}/live.ts" : null;
+        externalGrant = ExternalLinks.CreateChannelGrant(links.HlsAllowed ? links.HlsUrl : links.TsUrl);
         shareUrl = null;
+        shareError = null;
+        showShareForm = false;
+        shareHours = 4;
     }
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private void ToggleShareForm() { if (!shareBusy && shareUrl is null) { shareError = null; showShareForm = !showShareForm; } }
+    private void CancelShare() { if (!shareBusy) { shareError = null; showShareForm = false; } }
+    private async Task CreateShare()
     {
-        if (playbackUrl is not null || tsPlaybackUrl is not null) await Js.InvokeVoidAsync("streamlinkPlayer.load", "stream-player", playbackUrl, tsPlaybackUrl, tsPlaybackUrl is null ? null : tsPlaybackUrl.Replace("/live.ts", "/compatible.ts"));
+        if (shareBusy || !showShareForm || shareUrl is not null || Session.Session is null || links is null || (!links.HlsAllowed && !links.TsAllowed)) return;
+        shareBusy = true;
+        shareError = null;
+        var streamId = StreamId;
+        var requestedAt = DateTime.UtcNow;
+        try
+        {
+            var link = await Shares.CreateAsync(Session.Session, Session.OwnerKey,
+                new XtreamChannel { StreamId = streamId, Name = ChannelName }, CategoryName, shareHours);
+            if (StreamId == streamId)
+            {
+                shareUrl = Navigation.ToAbsoluteUri($"/watch/{link.Token}").ToString();
+                shareExpiresUtc = DateTime.SpecifyKind(link.ExpiresUtc, DateTimeKind.Utc);
+                reusedShare = link.CreatedUtc < requestedAt.AddSeconds(-2);
+                showShareForm = false;
+            }
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentOutOfRangeException) { shareError = exception.Message; }
+        catch (Exception) { shareError = "Couldn't create a share link. Please try again."; }
+        finally { shareBusy = false; }
     }
-    private async Task CreateShare() { if (Session.Session is null) return; var link = await Shares.CreateAsync(Session.Session, Session.OwnerKey, new XtreamChannel { StreamId = StreamId, Name = ChannelName }, CategoryName, ShareExpiration.EightHours); shareUrl = Navigation.ToAbsoluteUri($"/watch/{link.Token}").ToString(); }
 }

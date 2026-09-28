@@ -8,14 +8,34 @@ namespace StreamLink.Services;
 
 public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFactory, IStreamUrlService streamUrls, SessionPersistence persistence) : IShareLinkService
 {
-    public async Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, ShareExpiration expiration, CancellationToken cancellationToken = default)
+    // Serialize check-and-create within the app so repeated clicks and circuits
+    // reuse the same live share rather than inserting duplicate records.
+    private static readonly SemaphoreSlim CreationGate = new(1, 1);
+
+    public async Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var streamLinks = streamUrls.BuildLinks(session, channel.StreamId);
-        if (!streamLinks.HlsAllowed && !streamLinks.TsAllowed) throw new InvalidOperationException("Playback is not allowed for this account.");
-        var sources = new ShareSources(streamLinks.HlsAllowed ? streamLinks.HlsUrl : null, streamLinks.TsAllowed ? streamLinks.TsUrl : null);
-        var link = new ShareLink { Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(18)).ToLowerInvariant(), ChannelName = channel.Name, CategoryName = categoryName, StreamId = channel.StreamId, CreatedUtc = DateTime.UtcNow, ExpiresUtc = DateTime.UtcNow.AddHours((int)expiration), OwnerKey = ownerKey, ProtectedHlsUrl = persistence.ProtectString(JsonSerializer.Serialize(sources)) };
-        await db.ShareLinks.AddAsync(link, cancellationToken); await db.SaveChangesAsync(cancellationToken); return link;
+        if (expirationHours is < 1 or > 24) throw new ArgumentOutOfRangeException(nameof(expirationHours), "Choose a lifetime from 1 to 24 hours.");
+        await CreationGate.WaitAsync(cancellationToken);
+        try
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var existing = await db.ShareLinks.Where(x => x.OwnerKey == ownerKey && x.StreamId == channel.StreamId && !x.Revoked && x.ExpiresUtc > now)
+                .OrderByDescending(x => x.CreatedUtc).FirstOrDefaultAsync(cancellationToken);
+            if (existing is not null) return existing;
+
+            var activeCount = await db.ShareLinks.CountAsync(x => x.OwnerKey == ownerKey && !x.Revoked && x.ExpiresUtc > now, cancellationToken);
+            if (activeCount >= 25) throw new InvalidOperationException("You have reached the limit of 25 active share links. Revoke an existing link to create another.");
+
+            var streamLinks = streamUrls.BuildLinks(session, channel.StreamId);
+            if (!streamLinks.HlsAllowed && !streamLinks.TsAllowed) throw new InvalidOperationException("No supported stream format is allowed for this account.");
+            var sources = new ShareSources(streamLinks.HlsAllowed ? streamLinks.HlsUrl : null, streamLinks.TsAllowed ? streamLinks.TsUrl : null);
+            var link = new ShareLink { Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(18)).ToLowerInvariant(), ChannelName = channel.Name, CategoryName = categoryName, StreamId = channel.StreamId, CreatedUtc = now, ExpiresUtc = now.AddHours(expirationHours), OwnerKey = ownerKey, ProtectedHlsUrl = persistence.ProtectString(JsonSerializer.Serialize(sources)) };
+            await db.ShareLinks.AddAsync(link, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+            return link;
+        }
+        finally { CreationGate.Release(); }
     }
 
     public async Task<IReadOnlyList<ShareLink>> GetActiveAsync(string ownerKey, CancellationToken cancellationToken = default)
@@ -29,26 +49,24 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
         if (link is null || link.Revoked || link.ExpiresUtc <= DateTime.UtcNow) return null;
         var saved = persistence.UnprotectString(link.ProtectedHlsUrl);
         if (string.IsNullOrWhiteSpace(saved)) return null;
-        // Older shares protected a single HLS URL; new shares keep both allowed
-        // formats in the same encrypted database field (no SQLite migration).
+        // Older shares protected a single URL; newer records keep allowed formats
+        // in the same encrypted database field (no SQLite migration).
         if (!saved.StartsWith('{'))
         {
-            var legacy = new Uri(saved);
-            var ts = legacy.AbsolutePath.EndsWith(".ts", StringComparison.OrdinalIgnoreCase) ? saved : null;
-            // Pre-upgrade shares have only an HLS URL; the previous player derived
-            // the corresponding Xtream TS URL. Keep those active shares working.
-            if (ts is null && legacy.AbsolutePath.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
-                ts = new UriBuilder(legacy) { Path = legacy.AbsolutePath[..^6] + ".ts" }.Uri.ToString();
-            return new SharePlayback(link, saved, ts);
+            return IsProviderUrl(saved) ? new SharePlayback(link, saved) : null;
         }
         var sources = JsonSerializer.Deserialize<ShareSources>(saved);
         if (sources is null) return null;
         var primary = sources.HlsUrl ?? sources.TsUrl;
-        return string.IsNullOrWhiteSpace(primary) ? null : new SharePlayback(link, primary, sources.TsUrl);
+        return IsProviderUrl(primary) ? new SharePlayback(link, primary!) : null;
     }
     public async Task RevokeAsync(string token, string ownerKey, CancellationToken cancellationToken = default)
     { await using var db = await dbFactory.CreateDbContextAsync(cancellationToken); var link = await db.ShareLinks.SingleOrDefaultAsync(x => x.Token == token && x.OwnerKey == ownerKey, cancellationToken); if (link is not null) { link.Revoked = true; await db.SaveChangesAsync(cancellationToken); } }
 
     private sealed record ShareSources(string? HlsUrl, string? TsUrl);
+
+    private static bool IsProviderUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" &&
+        string.IsNullOrEmpty(uri.UserInfo);
 }
 

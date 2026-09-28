@@ -14,9 +14,4 @@ public sealed class ShareLink
     public string? ProtectedHlsUrl { get; set; }
 }
 
-public sealed record SharePlayback(ShareLink Link, string StreamUrl, string? TsUrl);
-
-public enum ShareExpiration
-{
-    EightHours = 8
-}
+public sealed record SharePlayback(ShareLink Link, string StreamUrl);
