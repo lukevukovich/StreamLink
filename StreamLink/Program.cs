@@ -13,7 +13,7 @@ builder.Logging.AddFilter("System.Net.Http.HttpClient.ExternalLinkRedirect", Log
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-var keyDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys");
+var keyDirectory = builder.Configuration["DataProtection:KeyDirectory"] ?? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys");
 Directory.CreateDirectory(keyDirectory);
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keyDirectory)).SetApplicationName("StreamLink");
 builder.Services.AddHttpClient("Xtream").ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(30));
@@ -71,3 +71,5 @@ app.MapRazorComponents<App>()
 app.Run();
 
 internal sealed record ExternalLinkRequest(string? Grant);
+
+public partial class Program;
