@@ -32,6 +32,10 @@ The app stores shares in SQLite (`ConnectionStrings:StreamLink`, default `Data S
 
 Build with `dotnet build .\StreamLink\StreamLink.csproj`. The app performs provider API requests for login and channel listings, but has no media playback libraries or `/stream/` endpoints. Old proxy URLs stop working after upgrading. Provider availability, output formats and codec support remain outside StreamLink's control.
 
+## Railway deployment
+
+Deploy from the repository root with the included `Dockerfile`. The container listens on `0.0.0.0` at Railway's `PORT` (falling back to `8080` when `PORT` is unset). Attach a Railway volume at `/app/data` so the SQLite database and Data Protection keys survive redeployments. Keep this volume private; without it, sessions and shares can be lost. Railway terminates HTTPS at its proxy; enable a public HTTPS domain for the service.
+
 ## Tests
 
 The sibling `StreamLink.Tests` project is linked to the app through a project reference; both projects are included in the root `StreamLink.sln`. From the repository root, run:
