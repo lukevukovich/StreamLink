@@ -18,6 +18,14 @@
 
 <body>
     <Routes @rendermode="InteractiveServer" />
+    <div id="streamlink-reconnect" role="status" aria-live="polite">
+        <div class="reconnect-card">
+            <span class="loading-mark" aria-hidden="true"></span>
+            <strong>Reconnecting to StreamLink</strong>
+            <span id="streamlink-reconnect-message">Restoring your connection…</span>
+            <button type="button" id="streamlink-reconnect-reload" class="button ghost">Reload now</button>
+        </div>
+    </div>
     <script src="js/external.js?v=13"></script>
     <script>
         window.streamlinkTime = {
@@ -35,7 +43,8 @@
             }
         };
     </script>
-    <script src="_framework/blazor.web.js"></script>
+    <script src="_framework/blazor.web.js" autostart="false"></script>
+    <script src="js/reconnect.js?v=1"></script>
 </body>
 
 </html>

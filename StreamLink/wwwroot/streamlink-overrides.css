@@ -416,24 +416,34 @@
   }
 }
 .auth-loading {
-  min-height: calc(100vh - 72px);
+  width: 100%;
+  min-height: calc(100dvh - 72px);
   display: grid;
   place-content: center;
   justify-items: center;
   gap: 14px;
   color: var(--muted);
   font-size: 0.8rem;
+  text-align: center;
 }
 .loading-mark {
-  display: grid;
-  place-items: center;
+  display: block;
+  position: relative;
   width: 44px;
   height: 44px;
-  border: 1px solid var(--mint);
+  flex: none;
+  border: 2px solid rgba(137, 192, 182, 0.2);
   border-radius: 50%;
-  color: var(--mint);
-  font-size: 1.7rem;
-  animation: streamlink-pulse 1.2s ease-in-out infinite;
+}
+.loading-mark::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid transparent;
+  border-top-color: var(--mint);
+  border-right-color: var(--mint);
+  border-radius: 50%;
+  animation: streamlink-spin 0.85s linear infinite;
 }
 .welcome-page {
   width: min(1100px, 100%);
@@ -555,11 +565,55 @@
   font-size: 0.68rem;
   letter-spacing: 1px;
 }
-@keyframes streamlink-pulse {
-  50% {
-    transform: scale(1.08);
-    opacity: 0.65;
+@keyframes streamlink-spin {
+  to {
+    transform: rotate(360deg);
   }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-mark::after {
+    animation: none;
+  }
+}
+@media (max-width: 600px) {
+  .auth-loading {
+    min-height: calc(100dvh - 64px);
+  }
+}
+#streamlink-reconnect {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  place-items: center;
+  padding: 20px;
+  background: rgba(7, 24, 27, 0.86);
+  backdrop-filter: blur(8px);
+  color: var(--cream);
+  text-align: center;
+}
+#streamlink-reconnect.is-visible {
+  display: grid;
+}
+.reconnect-card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(100%, 360px);
+  padding: 32px 24px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+}
+.reconnect-card strong {
+  font:
+    600 1.1rem "Space Grotesk",
+    sans-serif;
+}
+#streamlink-reconnect-message {
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 @media (max-width: 600px) {
   .welcome-page {
