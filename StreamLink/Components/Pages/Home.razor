@@ -7,7 +7,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
 
-<PageTitle>@(Session.IsAuthenticated ? "Welcome · StreamLink" : "Sign in · StreamLink")</PageTitle>
+<PageTitle>StreamLink</PageTitle>
 @if (Session.IsAuthenticated)
 {
 <div class="welcome-page"><div class="eyebrow"><span class="wordmark"><span>Stream</span><span>Link</span></span></div><h1>Ready when you are.</h1><p class="muted">Your live TV library is waiting. Browse categories, reopen a shared stream, or manage your account.</p><div class="welcome-grid">

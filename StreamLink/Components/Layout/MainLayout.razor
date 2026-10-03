@@ -12,7 +12,7 @@
     <main class="content-wrap @(IsLoginRoute ? "auth-content" : "")">
         @if (!Session.IsHydrated)
         {
-            <div class="auth-loading"><div class="loading-mark">◌</div><span>Loading <span class="wordmark"><span>Stream</span><span>Link</span></span>…</span></div>
+            <div class="auth-loading" role="status"><span class="loading-mark" aria-hidden="true"></span><span>Loading <span class="wordmark"><span>Stream</span><span>Link</span></span>…</span></div>
         }
         else
         {
