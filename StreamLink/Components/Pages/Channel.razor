@@ -1,6 +1,7 @@
 @page "/channel/{StreamId:int}"
 @rendermode InteractiveServer
 @inject SessionState Session
+@inject IXtreamApiService Xtream
 @inject IStreamUrlService Urls
 @inject IShareLinkService Shares
 @inject ExternalLinkService ExternalLinks
@@ -9,6 +10,8 @@
 
 <PageTitle>@ChannelName · StreamLink</PageTitle>
 @if (Session.Session is null) { <RedirectToLogin /> }
+else if (loading) { <div class="loading-card">Loading channel…</div> }
+else if (!channelFound) { <div class="empty-card">@(loadFailed ? "Couldn't load this channel. Try refreshing the page." : "This channel is not available in your account.")</div> }
 else
 {
     <a class="back-link" href="/tv">← Live TV</a>
@@ -60,24 +63,69 @@ else
 
 @code {
     [Parameter] public int StreamId { get; set; }
-    [SupplyParameterFromQuery(Name = "name")] public string ChannelName { get; set; } = "Channel";
-    [SupplyParameterFromQuery(Name = "category")] public string CategoryName { get; set; } = "Live TV";
+    private string ChannelName = "Channel";
+    private string CategoryName = "Live TV";
+    private bool channelFound;
+    private bool loading = true;
+    private bool loadFailed;
     private StreamLinks? links; private string? shareUrl; private string? shareError; private bool shareBusy; private bool showShareForm; private bool reusedShare; private int shareHours = 4; private DateTime shareExpiresUtc; private string externalGrant = ""; private int? loadedStreamId;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (Navigation.ToAbsoluteUri(Navigation.Uri).Query.Length > 0)
+        {
+            Navigation.NavigateTo($"/channel/{StreamId}", replace: true);
+            return;
+        }
         if (shareUrl is not null) await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".share-created .local-time");
     }
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (Session.Session is null) { links = null; loadedStreamId = null; return; }
         if (loadedStreamId == StreamId) return;
         loadedStreamId = StreamId;
-        links = Urls.BuildLinks(Session.Session, StreamId);
-        externalGrant = ExternalLinks.CreateChannelGrant(links.HlsAllowed ? links.HlsUrl : links.TsUrl);
+        var streamId = StreamId;
+        var session = Session.Session;
+        loading = true;
+        channelFound = false;
+        loadFailed = false;
+        links = null;
+        ChannelName = "Channel";
+        CategoryName = "Live TV";
         shareUrl = null;
         shareError = null;
         showShareForm = false;
         shareHours = 4;
+        try
+        {
+            var channels = await Xtream.GetChannelsAsync(session, "");
+            var channel = channels.FirstOrDefault(item => item.StreamId == streamId);
+            IReadOnlyList<XtreamCategory>? categories = null;
+            if (channel is null || !string.IsNullOrWhiteSpace(channel.CategoryId))
+                categories = await Xtream.GetCategoriesAsync(session);
+            if (channel is null && categories is not null)
+            {
+                foreach (var category in categories)
+                {
+                    if (StreamId != streamId) return;
+                    channel = (await Xtream.GetChannelsAsync(session, category.Id)).FirstOrDefault(item => item.StreamId == streamId);
+                    if (channel is null) continue;
+                    CategoryName = category.Name;
+                    break;
+                }
+            }
+            if (StreamId != streamId) return;
+            if (channel is not null)
+            {
+                ChannelName = channel.Name;
+                if (!string.IsNullOrWhiteSpace(channel.CategoryId))
+                    CategoryName = categories?.FirstOrDefault(item => item.Id == channel.CategoryId)?.Name ?? CategoryName;
+                channelFound = true;
+                links = Urls.BuildLinks(session, streamId);
+                externalGrant = ExternalLinks.CreateChannelGrant(links.HlsAllowed ? links.HlsUrl : links.TsUrl);
+            }
+        }
+        catch (Exception) { if (StreamId == streamId) { loadFailed = true; channelFound = false; links = null; } }
+        finally { if (StreamId == streamId) loading = false; }
     }
     private void ToggleShareForm() { if (!shareBusy && shareUrl is null) { shareError = null; showShareForm = !showShareForm; } }
     private void CancelShare() { if (!shareBusy) { shareError = null; showShareForm = false; } }

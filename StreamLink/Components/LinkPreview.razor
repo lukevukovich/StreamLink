@@ -1,0 +1,113 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+@inject IShareLinkService Shares
+
+<HeadContent>
+    <meta name="description" content="@description" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="StreamLink" />
+    <meta property="og:title" content="@title" />
+    <meta property="og:description" content="@description" />
+    <meta property="og:url" content="@url" />
+    <meta property="og:image" content="@image" />
+    <meta property="og:image:secure_url" content="@image" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="StreamLink branded link preview" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="@title" />
+    <meta name="twitter:description" content="@description" />
+    <meta name="twitter:image" content="@image" />
+    @if (isWatchLink)
+    {
+        <meta name="robots" content="noindex, nofollow" />
+    }
+</HeadContent>
+
+@code {
+    private string title = "StreamLink · Live TV, your way";
+    private string description = "Explore live channels and share a link to open a stream in your favorite player with StreamLink.";
+    private string url = "";
+    private string image = "";
+    private bool isWatchLink;
+    private long navigationVersion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        await UpdateAsync();
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs args) =>
+        _ = InvokeAsync(async () => { await UpdateAsync(); StateHasChanged(); });
+
+    private async Task UpdateAsync()
+    {
+        var version = ++navigationVersion;
+        var uri = new Uri(Navigation.Uri);
+        var path = uri.AbsolutePath.TrimEnd('/');
+        var configuredOrigin = Configuration["PublicBaseUrl"];
+        var origin = Uri.TryCreate(configuredOrigin, UriKind.Absolute, out var publicUri) &&
+            publicUri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(publicUri.UserInfo) &&
+            string.IsNullOrEmpty(publicUri.Query) && string.IsNullOrEmpty(publicUri.Fragment) && publicUri.AbsolutePath == "/"
+            ? publicUri : uri;
+        url = new Uri(origin, uri.AbsolutePath).GetLeftPart(UriPartial.Path);
+        image = new Uri(origin, "/streamlink-preview.png").ToString();
+        isWatchLink = false;
+        title = "StreamLink · Live TV, your way";
+        description = "Explore live channels and share a link to open a stream in your favorite player with StreamLink.";
+
+        if (path.Equals("/watch", StringComparison.OrdinalIgnoreCase))
+        {
+            title = "Open a shared stream · StreamLink";
+            description = "Open a StreamLink share code to watch live TV in an external player.";
+        }
+        else if (path.StartsWith("/watch/", StringComparison.OrdinalIgnoreCase))
+        {
+            isWatchLink = true;
+            title = "Shared stream · StreamLink";
+            description = "Open a shared live stream with StreamLink. This link may have expired or been revoked.";
+            var token = path[7..];
+            if (token.Length == 36 && token.All(Uri.IsHexDigit))
+            {
+                var link = await Shares.GetAsync(token);
+                if (version != navigationVersion) return;
+                if (link is { Revoked: false } && link.ExpiresUtc > DateTime.UtcNow)
+                {
+                    title = $"{link.ChannelName} · StreamLink";
+                    description = $"Watch {link.ChannelName} live in an external player with StreamLink" +
+                        (string.IsNullOrWhiteSpace(link.CategoryName) ? "." : $" · {link.CategoryName}.");
+                }
+            }
+        }
+        else if (path.Equals("/tv", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/tv/", StringComparison.OrdinalIgnoreCase))
+        {
+            title = "Live channels · StreamLink";
+            description = "Browse live TV channels and open streams in an external player with StreamLink.";
+        }
+        else if (path.Equals("/shares", StringComparison.OrdinalIgnoreCase))
+        {
+            title = "Your shares · StreamLink";
+            description = "Manage your StreamLink share links for live channels.";
+        }
+        else if (path.Equals("/channel", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/channel/", StringComparison.OrdinalIgnoreCase))
+        {
+            title = "Live channel · StreamLink";
+            description = "Open a live channel in an external player with StreamLink.";
+        }
+        else if (path.Equals("/account", StringComparison.OrdinalIgnoreCase))
+        {
+            title = "Account · StreamLink";
+            description = "Manage your StreamLink account.";
+        }
+        else if (path.Equals("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            title = "Sign in · StreamLink";
+            description = "Connect your provider account to browse live TV with StreamLink.";
+        }
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}
