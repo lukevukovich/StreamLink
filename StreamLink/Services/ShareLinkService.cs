@@ -1,15 +1,26 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using StreamLink.Data;
 using StreamLink.Models;
 
 namespace StreamLink.Services;
 
-public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFactory, IStreamUrlService streamUrls, SessionPersistence persistence) : IShareLinkService
+public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFactory, IStreamUrlService streamUrls, SessionPersistence persistence, IConfiguration configuration) : IShareLinkService
 {
-    // Serialize check-and-create within the app so repeated clicks and circuits
-    // reuse the same live share rather than inserting duplicate records.
+    private readonly int maxActiveLinksPerOwner = ReadMaxActiveLinksPerOwner(configuration);
+
+    private static int ReadMaxActiveLinksPerOwner(IConfiguration configuration)
+    {
+        var raw = configuration["ShareLinks:MaxActivePerOwner"];
+        if (!int.TryParse(raw, out var limit) || limit < 1 || limit > 100)
+            throw new InvalidOperationException("ShareLinks:MaxActivePerOwner must be an integer between 1 and 100.");
+        return limit;
+    }
+
+    // Serialize creation within this process; the SQLite write transaction also
+    // serializes the count and insert across multiple app instances.
     private static readonly SemaphoreSlim CreationGate = new(1, 1);
 
     public async Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default)
@@ -19,13 +30,23 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
         try
         {
             await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var now = DateTime.UtcNow;
-            var existing = await db.ShareLinks.Where(x => x.OwnerKey == ownerKey && x.StreamId == channel.StreamId && !x.Revoked && x.ExpiresUtc > now)
+            await db.ShareLinks.Where(x => x.Revoked || x.ExpiresUtc <= now).ExecuteDeleteAsync(cancellationToken);
+            var existing = await db.ShareLinks.Where(x => x.OwnerKey == ownerKey && x.StreamId == channel.StreamId)
                 .OrderByDescending(x => x.CreatedUtc).FirstOrDefaultAsync(cancellationToken);
-            if (existing is not null) return existing;
+            if (existing is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return existing;
+            }
 
-            var activeCount = await db.ShareLinks.CountAsync(x => x.OwnerKey == ownerKey && !x.Revoked && x.ExpiresUtc > now, cancellationToken);
-            if (activeCount >= 25) throw new InvalidOperationException("You have reached the limit of 25 active share links. Revoke an existing link to create another.");
+            var activeCount = await db.ShareLinks.CountAsync(x => x.OwnerKey == ownerKey, cancellationToken);
+            if (activeCount >= maxActiveLinksPerOwner)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                throw new InvalidOperationException($"You have reached the limit of {maxActiveLinksPerOwner} active share links. Revoke an existing link to create another.");
+            }
 
             var streamLinks = streamUrls.BuildLinks(session, channel.StreamId);
             if (!streamLinks.HlsAllowed && !streamLinks.TsAllowed) throw new InvalidOperationException("No supported stream format is allowed for this account.");
@@ -33,6 +54,7 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
             var link = new ShareLink { Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(18)).ToLowerInvariant(), ChannelName = channel.Name, CategoryName = categoryName, StreamId = channel.StreamId, CreatedUtc = now, ExpiresUtc = now.AddHours(expirationHours), OwnerKey = ownerKey, ProtectedHlsUrl = persistence.ProtectString(JsonSerializer.Serialize(sources)) };
             await db.ShareLinks.AddAsync(link, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return link;
         }
         finally { CreationGate.Release(); }
