@@ -43,16 +43,56 @@ public class ShareTests : IDisposable
     {
         var (service, _, _) = TestSupport.Shares(database);
         var first = await service.CreateAsync(TestSupport.Session(), "a", Channel(0), "News", 1);
-        for (var id = 1; id < 25; id++) await service.CreateAsync(TestSupport.Session(), "a", Channel(id), "News", 1);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateAsync(TestSupport.Session(), "a", Channel(25), "News", 1));
+        for (var id = 1; id < 10; id++) await service.CreateAsync(TestSupport.Session(), "a", Channel(id), "News", 1);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateAsync(TestSupport.Session(), "a", Channel(10), "News", 1));
+        Assert.Contains("10 active share links", error.Message);
+        Assert.Equal(first.Token, (await service.CreateAsync(TestSupport.Session(), "a", Channel(0), "News", 1)).Token);
         Assert.Empty(await service.GetActiveAsync("b"));
         await service.RevokeAsync(first.Token, "b");
         Assert.NotNull(await service.GetPlaybackAsync(first.Token));
         await service.RevokeAsync(first.Token, "a");
         Assert.Null(await service.GetPlaybackAsync(first.Token));
-        Assert.Equal(24, (await service.GetActiveAsync("a")).Count);
-        Assert.NotNull(await service.CreateAsync(TestSupport.Session(), "a", Channel(25), "News", 1));
+        Assert.Equal(9, (await service.GetActiveAsync("a")).Count);
+        Assert.NotNull(await service.CreateAsync(TestSupport.Session(), "a", Channel(10), "News", 1));
         Assert.NotNull(await service.CreateAsync(TestSupport.Session(), "b", Channel(1), "News", 1));
+    }
+
+    [Fact]
+    public async Task Create_PrunesExpiredAndRevokedRowsWithoutRemovingLiveLinks()
+    {
+        var (service, factory, _) = TestSupport.Shares(database);
+        var expired = await service.CreateAsync(TestSupport.Session(), "owner", Channel(1), "News", 1);
+        var revoked = await service.CreateAsync(TestSupport.Session(), "owner", Channel(2), "News", 1);
+        var live = await service.CreateAsync(TestSupport.Session(), "owner", Channel(3), "News", 1);
+        await service.RevokeAsync(revoked.Token, "owner");
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            var row = await db.ShareLinks.SingleAsync(x => x.Token == expired.Token);
+            row.ExpiresUtc = DateTime.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+
+        await service.CreateAsync(TestSupport.Session(), "owner", Channel(4), "News", 1);
+        await using var check = await factory.CreateDbContextAsync();
+        Assert.Equal(2, await check.ShareLinks.CountAsync());
+        Assert.NotNull(await service.GetPlaybackAsync(live.Token));
+        Assert.Null(await service.GetAsync(expired.Token));
+        Assert.Null(await service.GetAsync(revoked.Token));
+    }
+
+    [Fact]
+    public async Task Create_EnforcesLimitAcrossServiceInstances()
+    {
+        var (service, factory, persistence) = TestSupport.Shares(database);
+        var other = new StreamLink.Services.ShareLinkService(factory, new StreamLink.Services.StreamUrlService(), persistence);
+        var attempts = Enumerable.Range(0, 16).Select(async id =>
+        {
+            try { await (id % 2 == 0 ? service : other).CreateAsync(TestSupport.Session(), "owner", Channel(id), "News", 1); }
+            catch (InvalidOperationException) { }
+        });
+        await Task.WhenAll(attempts);
+        await using var db = await factory.CreateDbContextAsync();
+        Assert.Equal(10, await db.ShareLinks.CountAsync());
     }
 
     [Fact]
