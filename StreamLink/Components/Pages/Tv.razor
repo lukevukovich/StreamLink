@@ -35,5 +35,5 @@ else
         catch (Exception) { loadError = "We couldn't load your live TV categories. Try refreshing the page."; }
         finally { loading = false; }
     }
-    private void OpenCategory(XtreamCategory category) => Navigation.NavigateTo($"/tv/{Uri.EscapeDataString(category.Id)}?name={Uri.EscapeDataString(category.Name)}");
+    private void OpenCategory(XtreamCategory category) => Navigation.NavigateTo($"/tv/{Uri.EscapeDataString(category.Id)}");
 }

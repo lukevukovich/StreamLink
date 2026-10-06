@@ -106,13 +106,15 @@ public class XtreamApiTests
         {
             var query = request.RequestUri!.Query;
             if (query.Contains("get_live_categories")) return StubHandler.Json("[{\"category_id\":\"7\",\"category_name\":\"News\"}]");
-            if (query.Contains("get_live_streams")) return StubHandler.Json("{\"first\":[{\"stream_id\":\"12\",\"name\":\"One\"}],\"second\":[{\"stream_id\":13,\"name\":\"Two\"}]}");
+            if (query.Contains("get_live_streams")) return StubHandler.Json("{\"first\":[{\"stream_id\":\"12\",\"category_id\":\"7\",\"name\":\"One\"}],\"second\":[{\"stream_id\":13,\"name\":\"Two\"}]}");
             return StubHandler.Json("{\"user_info\":{\"auth\":1}}");
         });
         var api = new XtreamApiService(new StubClients(handler));
         var session = TestSupport.Session();
         Assert.NotNull(await api.RefreshAccountAsync(session));
-        Assert.Equal(2, (await api.GetChannelsAsync(session, "a & b")).Count);
+        var channels = await api.GetChannelsAsync(session, "a & b");
+        Assert.Equal(2, channels.Count);
+        Assert.Equal("7", channels[0].CategoryId);
         Assert.Single(await api.GetCategoriesAsync(session));
         Assert.Contains("category_id=a%20%26%20b", handler.Requests[1].Query);
     }

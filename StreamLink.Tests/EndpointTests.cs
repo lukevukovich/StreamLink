@@ -71,9 +71,72 @@ public class EndpointTests : IClassFixture<EndpointFactory>
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("http://localhost") });
         var html = await client.GetStringAsync($"/watch/{share.Token}");
         Assert.Contains("auth-loading", html);
-        Assert.DoesNotContain("Test Channel", html);
+        Assert.DoesNotContain("<h1>Test Channel</h1>", html);
         Assert.DoesNotContain("p@ss word", html);
         Assert.DoesNotContain("provider.example", html);
+    }
+
+    [Fact]
+    public async Task SharePreview_ContainsSafeActiveMetadataAndAbsoluteImage()
+    {
+        using var scope = factory.Services.CreateScope();
+        var shares = scope.ServiceProvider.GetRequiredService<IShareLinkService>();
+        var share = await shares.CreateAsync(TestSupport.Session(), "owner", new XtreamChannel { StreamId = 100, Name = "News & Sports <Live>" }, "News", 1);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("http://localhost") });
+        var html = await client.GetStringAsync($"/watch/{share.Token}");
+        Assert.Contains("property=\"og:title\"", html);
+        Assert.Contains("property=\"og:title\" content=\"News &amp; Sports &lt;Live&gt; &#xB7; StreamLink\"", html);
+        Assert.Contains("property=\"og:description\"", html);
+        Assert.Contains($"property=\"og:url\" content=\"https://streamlink.example.com/watch/{share.Token}\"", html);
+        Assert.Contains("property=\"og:image\" content=\"https://streamlink.example.com/streamlink-preview.png\"", html);
+        Assert.Contains("name=\"twitter:card\" content=\"summary_large_image\"", html);
+        Assert.Contains("name=\"robots\" content=\"noindex, nofollow\"", html);
+        Assert.DoesNotContain("provider.example", html);
+        Assert.DoesNotContain("p@ss word", html);
+
+        await shares.RevokeAsync(share.Token, "owner");
+        html = await client.GetStringAsync($"/watch/{share.Token}");
+        Assert.Contains("property=\"og:title\" content=\"Shared stream &#xB7; StreamLink\"", html);
+        Assert.DoesNotContain("News &amp; Sports", html);
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/tv")]
+    [InlineData("/tv/7")]
+    [InlineData("/channel/99")]
+    [InlineData("/watch")]
+    [InlineData("/watch/missing")]
+    public async Task PublicPreview_HasGenericMetadataAndBrandedImage(string path)
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("http://localhost") });
+        var html = await client.GetStringAsync(path);
+        Assert.Contains("property=\"og:site_name\" content=\"StreamLink\"", html);
+        Assert.Contains("property=\"og:image\" content=\"https://streamlink.example.com/streamlink-preview.png\"", html);
+        Assert.Contains("name=\"twitter:image\" content=\"https://streamlink.example.com/streamlink-preview.png\"", html);
+        using var image = await client.GetAsync("/streamlink-preview.png");
+        Assert.Equal(HttpStatusCode.OK, image.StatusCode);
+        Assert.Equal("image/png", image.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Theory]
+    [InlineData("/tv/7?name=%F0%9F%93%BA%20News", "https://streamlink.example.com/tv/7")]
+    [InlineData("/channel/99?name=%F0%9F%93%BA%20News&category=%F0%9F%8E%AC", "https://streamlink.example.com/channel/99")]
+    public async Task LegacyLinks_PreviewCleanCanonicalUrls(string path, string expected)
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("http://localhost") });
+        var html = await client.GetStringAsync(path);
+        Assert.Contains($"property=\"og:url\" content=\"{expected}\"", html);
+        Assert.DoesNotContain("%F0%9F", html);
+    }
+
+    [Fact]
+    public async Task PublicPreview_UsesConfiguredHttpsOriginBehindProxy()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("http://localhost") });
+        var html = await client.GetStringAsync("/tv");
+        Assert.Contains("property=\"og:url\" content=\"https://streamlink.example.com/tv\"", html);
+        Assert.Contains("property=\"og:image\" content=\"https://streamlink.example.com/streamlink-preview.png\"", html);
     }
 
     private static HttpRequestMessage Request(string grant, string origin = "http://localhost")
@@ -97,7 +160,8 @@ public sealed class EndpointFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Development");
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 { ["ConnectionStrings:StreamLink"] = $"Data Source={Path.Combine(root, "test.db")}",
-                    ["DataProtection:KeyDirectory"] = Path.Combine(root, "keys") }));
+                    ["DataProtection:KeyDirectory"] = Path.Combine(root, "keys"),
+                    ["PublicBaseUrl"] = "https://streamlink.example.com/" }));
         builder.ConfigureTestServices(services => services.AddHttpClient("ExternalLinkRedirect")
             .ConfigurePrimaryHttpMessageHandler(() => new StubHandler(_ =>
             {
