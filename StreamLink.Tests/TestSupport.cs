@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using StreamLink.Data;
 using StreamLink.Models;
 using StreamLink.Services;
@@ -19,13 +20,17 @@ internal static class TestSupport
 
     public static IDataProtectionProvider Protection() => new EphemeralDataProtectionProvider();
 
+    public static IConfiguration ShareConfiguration() => new ConfigurationBuilder()
+        .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"))
+        .Build();
+
     public static (ShareLinkService Service, IDbContextFactory<StreamLinkDbContext> Factory, SessionPersistence Persistence) Shares(string database)
     {
         var options = new DbContextOptionsBuilder<StreamLinkDbContext>().UseSqlite($"Data Source={database}").Options;
         var factory = new SimpleDbFactory(options);
         using (var db = factory.CreateDbContext()) db.Database.EnsureCreated();
         var persistence = new SessionPersistence(Protection());
-        return (new ShareLinkService(factory, new StreamUrlService(), persistence), factory, persistence);
+        return (new ShareLinkService(factory, new StreamUrlService(), persistence, ShareConfiguration()), factory, persistence);
     }
 }
 

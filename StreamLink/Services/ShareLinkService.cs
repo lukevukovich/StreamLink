@@ -1,14 +1,23 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using StreamLink.Data;
 using StreamLink.Models;
 
 namespace StreamLink.Services;
 
-public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFactory, IStreamUrlService streamUrls, SessionPersistence persistence) : IShareLinkService
+public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFactory, IStreamUrlService streamUrls, SessionPersistence persistence, IConfiguration configuration) : IShareLinkService
 {
-    private const int MaxActiveLinksPerOwner = 20;
+    private readonly int maxActiveLinksPerOwner = ReadMaxActiveLinksPerOwner(configuration);
+
+    private static int ReadMaxActiveLinksPerOwner(IConfiguration configuration)
+    {
+        var raw = configuration["ShareLinks:MaxActivePerOwner"];
+        if (!int.TryParse(raw, out var limit) || limit < 1 || limit > 100)
+            throw new InvalidOperationException("ShareLinks:MaxActivePerOwner must be an integer between 1 and 100.");
+        return limit;
+    }
 
     // Serialize creation within this process; the SQLite write transaction also
     // serializes the count and insert across multiple app instances.
@@ -33,10 +42,10 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
             }
 
             var activeCount = await db.ShareLinks.CountAsync(x => x.OwnerKey == ownerKey, cancellationToken);
-            if (activeCount >= MaxActiveLinksPerOwner)
+            if (activeCount >= maxActiveLinksPerOwner)
             {
                 await transaction.CommitAsync(cancellationToken);
-                throw new InvalidOperationException($"You have reached the limit of {MaxActiveLinksPerOwner} active share links. Revoke an existing link to create another.");
+                throw new InvalidOperationException($"You have reached the limit of {maxActiveLinksPerOwner} active share links. Revoke an existing link to create another.");
             }
 
             var streamLinks = streamUrls.BuildLinks(session, channel.StreamId);
