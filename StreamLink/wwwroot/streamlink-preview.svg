@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#07181b"/>
+      <stop offset="1" stop-color="#143b3e"/>
+    </linearGradient>
+    <linearGradient id="accent" x2="1" y2="1">
+      <stop stop-color="#b7e6d7"/>
+      <stop offset="1" stop-color="#448c8a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <circle cx="1070" cy="80" r="300" fill="#89c0b6" opacity=".055"/>
+  <circle cx="60" cy="610" r="270" fill="#89c0b6" opacity=".045"/>
+  <rect x="80" y="76" width="1040" height="478" rx="34" fill="#10292d" stroke="#397074" stroke-width="2"/>
+  <rect x="133" y="137" width="98" height="98" rx="26" fill="#07181b" stroke="#89c0b6" stroke-width="2"/>
+  <path d="M159 165h46v42h-46z" fill="none" stroke="#e4f1e1" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M167 175h29m-29 10h17m-17 10h24" stroke="#89c0b6" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="207" cy="207" r="15" fill="#448c8a" stroke="#07181b" stroke-width="3"/>
+  <path d="m203 200 12 7-12 7z" fill="#e4f1e1"/>
+  <text x="260" y="210" fill="#e4f1e1" font-family="Arial, sans-serif" font-size="65" font-weight="bold">Stream<tspan fill="#89c0b6">Link</tspan></text>
+  <rect x="133" y="290" width="81" height="7" rx="3" fill="url(#accent)"/>
+  <text x="133" y="379" fill="#e4f1e1" font-family="Arial, sans-serif" font-size="55" font-weight="bold">Live TV, your way.</text>
+  <text x="133" y="439" fill="#b7d1ca" font-family="Arial, sans-serif" font-size="29">Explore channels. Share a link. Open in your player.</text>
+  <text x="133" y="510" fill="#89c0b6" font-family="Arial, sans-serif" font-size="22" letter-spacing="3">STREAMLINK</text>
+</svg>
