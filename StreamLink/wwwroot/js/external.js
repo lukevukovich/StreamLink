@@ -38,32 +38,24 @@ function vlcDevice() {
   const platform =
     navigator.userAgentData?.platform || navigator.platform || "";
   if (
-    /^(Win|Mac|Linux)/i.test(platform) &&
-    !(
-      platform === "MacIntel" &&
-      navigator.maxTouchPoints > 1 &&
-      navigator.userAgentData?.mobile !== false
-    )
-  )
-    return "desktop";
-  if (
     /^(iPhone|iPad|iPod)$/i.test(platform) ||
     (platform === "MacIntel" &&
       navigator.maxTouchPoints > 1 &&
       navigator.userAgentData?.mobile !== false)
   )
     return "ios";
-  if (
-    /Android/i.test(platform) ||
-    (navigator.userAgentData?.mobile === true &&
-      /Android/i.test(navigator.userAgent))
-  )
+  if (/Android/i.test(platform) || /Android/i.test(navigator.userAgent))
     return "android";
+  if (/^(Win|Mac|Linux)/i.test(platform)) return "desktop";
   // Unknown/spoofed platforms get the predictable playlist fallback.
   return "desktop";
 }
 
 document.documentElement.dataset.vlcDevice = vlcDevice();
+
+function openInCurrentTab() {
+  return ["ios", "android"].includes(vlcDevice());
+}
 
 window.streamlinkExternal = {
   resolve: async (grant) => {
@@ -153,21 +145,24 @@ document.addEventListener("click", async (event) => {
   message.textContent = "Capturing stream link…";
   message.hidden = false;
   button.disabled = true;
-  // Opening a blank tab during the click retains user activation on mobile.
-  const tab =
-    button.dataset.streamAction === "open"
-      ? window.open("about:blank", "_blank")
-      : null;
+  const isOpen = button.dataset.streamAction === "open";
+  const sameTab = isOpen && openInCurrentTab();
+  // Desktop still needs a blank tab created during the user gesture.
+  const tab = isOpen && !sameTab ? window.open("about:blank", "_blank") : null;
   if (tab) tab.opener = null;
   try {
-    if (button.dataset.streamAction === "open" && !tab) {
+    if (isOpen && !sameTab && !tab) {
       message.textContent = "Allow pop-ups to open the stream in a new tab.";
       return;
     }
     const url = await window.streamlinkExternal.resolve(grant);
-    if (button.dataset.streamAction === "open") {
-      tab.location.replace(url);
-      message.textContent = "Stream opened in a new tab.";
+    if (isOpen) {
+      if (sameTab) {
+        window.location.assign(url);
+      } else {
+        tab.location.replace(url);
+        message.textContent = "Stream opened in a new tab.";
+      }
     } else if (button.dataset.streamAction === "copy") {
       message.textContent = await window.streamlinkExternal.copy(url, card);
     } else {
@@ -201,14 +196,15 @@ document.addEventListener("click", async (event) => {
   const status = container.querySelector(".copy-status");
   if (!input || !status || button.disabled) return;
   const isOpen = button.hasAttribute("data-open-grant");
-  // Open a blank tab during the gesture, before awaiting the provider request.
-  const tab = isOpen ? window.open("about:blank", "_blank") : null;
+  const sameTab = isOpen && openInCurrentTab();
+  // Desktop opens a blank tab during the gesture, before awaiting the provider request.
+  const tab = isOpen && !sameTab ? window.open("about:blank", "_blank") : null;
   if (tab) tab.opener = null;
   if (!button.hasAttribute("data-copy-input")) input.hidden = true;
   status.hidden = false;
   button.disabled = true;
   try {
-    if (isOpen && !tab) {
+    if (isOpen && !sameTab && !tab) {
       status.textContent = "Allow pop-ups to open the link.";
       return;
     }
@@ -217,7 +213,9 @@ document.addEventListener("click", async (event) => {
       ? await window.streamlinkExternal.resolve(grant)
       : (button.dataset.copyUrl ?? input.value);
     if (!url) throw new Error("Missing link");
-    if (tab) {
+    if (sameTab) {
+      window.location.assign(url);
+    } else if (tab) {
       tab.location.replace(url);
       status.textContent = "Opened in a new tab.";
     } else {

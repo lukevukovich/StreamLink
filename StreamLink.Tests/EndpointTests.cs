@@ -17,6 +17,22 @@ public class EndpointTests : IClassFixture<EndpointFactory>
     public EndpointTests(EndpointFactory factory) => this.factory = factory;
 
     [Fact]
+    public void XtreamClient_SendsUserAgentRequiredBySomeProviders()
+    {
+        using var scope = factory.Services.CreateScope();
+        using var client = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("Xtream");
+        Assert.Equal("StreamLink/1.0", client.DefaultRequestHeaders.UserAgent.ToString());
+    }
+
+    [Fact]
+    public void RedirectClient_SendsUserAgentRequiredForProviderStreams()
+    {
+        using var scope = factory.Services.CreateScope();
+        using var client = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("ExternalLinkRedirect");
+        Assert.Equal("StreamLink/1.0", client.DefaultRequestHeaders.UserAgent.ToString());
+    }
+
+    [Fact]
     public async Task Endpoint_RejectsMissingWrongAndOversizedGrantsOrOrigins()
     {
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("http://localhost") });
