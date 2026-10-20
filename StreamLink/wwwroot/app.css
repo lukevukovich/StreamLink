@@ -2,6 +2,7 @@
 :root {
   --bg: #07181b;
   --bg-rgb: 7 24 27;
+  --page-bg: var(--bg);
   --surface: #0d2428;
   --surface-rgb: 13 36 40;
   --surface-2: #123238;
@@ -89,6 +90,7 @@ html[data-theme="dark"] {
 html[data-theme="light"] {
   --bg: #fafafa;
   --bg-rgb: 250 250 250;
+  --page-bg: #f3f3f3;
   --surface: #ffffff;
   --surface-rgb: 255 255 255;
   --surface-2: #eaeaea;
@@ -112,13 +114,13 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background: var(--bg);
+  background: var(--page-bg);
 }
 body {
   color: var(--cream);
   position: relative;
   isolation: isolate;
-  background: var(--bg);
+  background: var(--page-bg);
 }
 .page-background {
   position: absolute;
@@ -126,9 +128,11 @@ body {
   left: 0;
   right: 0;
   height: 100vh;
-  height: 100dvh;
+  height: 100svh;
   z-index: -1;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
   background:
     radial-gradient(
       circle at 12% -10%,
@@ -140,12 +144,12 @@ body {
       rgb(var(--accent-rgb) / 0.1),
       transparent 30rem
     ),
-    var(--bg);
+    var(--page-bg);
 }
 html[data-theme="light"] .page-background {
   background:
     radial-gradient(circle at 100% 100%, rgb(var(--accent-rgb) / 0.04), transparent 30rem),
-    linear-gradient(180deg, #ffffff 0%, #f3f3f3 100%);
+    linear-gradient(180deg, #ffffff 0%, var(--page-bg) 100%);
 }
 a {
   color: inherit;
@@ -175,6 +179,9 @@ h1 {
 }
 .app-shell {
   min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
 }
 #streamlink-initial-loading {
   position: fixed;
@@ -225,10 +232,10 @@ h1 {
   background: var(--mint);
 }
 .content-wrap {
+  flex: 1;
   width: min(1180px, 100%);
   margin: auto;
-  padding: clamp(28px, 5vw, 64px) clamp(18px, 5vw, 72px) 90px;
-  padding-bottom: 0px;
+  padding: clamp(28px, 5vw, 64px) clamp(18px, 5vw, 72px) 0;
 }
 .login-page {
   min-height: calc(100dvh - 72px);
