@@ -34,6 +34,7 @@ body {
       transparent 30rem
     ),
     var(--bg);
+  background-attachment: fixed;
 }
 a {
   color: inherit;
