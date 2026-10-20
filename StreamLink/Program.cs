@@ -68,11 +68,11 @@ app.MapPost("/api/external-link", async (HttpContext context, ExternalLinkServic
     return url is null ? Results.UnprocessableEntity() : Results.Json(new { url });
 });
 
-using (var scope = app.Services.CreateScope())
+await using (var scope = app.Services.CreateAsyncScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<StreamLinkDbContext>();
-    db.Database.EnsureCreated();
-    db.EnsureThemePreferencesTable();
+    var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<StreamLinkDbContext>>();
+    await using var db = await dbFactory.CreateDbContextAsync();
+    await db.Database.MigrateAsync();
 }
 
 app.MapRazorComponents<App>()

@@ -103,9 +103,37 @@ public class StreamAndSessionTests
 public class ThemePreferenceTests
 {
     [Fact]
-    public async Task Startup_AddsThemeTableToAnExistingDatabase()
+    public async Task Migrations_CreateSchemaForANewDatabase()
     {
-        var database = Path.Combine(Path.GetTempPath(), $"streamlink-legacy-theme-tests-{Guid.NewGuid():N}.db");
+        var database = Path.Combine(Path.GetTempPath(), $"streamlink-empty-migration-tests-{Guid.NewGuid():N}.db");
+        try
+        {
+            var options = new DbContextOptionsBuilder<StreamLinkDbContext>()
+                .UseSqlite($"Data Source={database};Pooling=False")
+                .Options;
+            var factory = new SimpleDbFactory(options);
+
+            using (var db = factory.CreateDbContext())
+                await db.Database.MigrateAsync();
+
+            using (var db = factory.CreateDbContext())
+            {
+                db.ThemePreferences.Add(new ThemePreference { OwnerKey = "new-owner", Theme = "dark" });
+                await db.SaveChangesAsync();
+                Assert.Equal("dark", (await db.ThemePreferences.SingleAsync()).Theme);
+                Assert.Single(await db.Database.GetAppliedMigrationsAsync());
+            }
+        }
+        finally
+        {
+            if (File.Exists(database)) File.Delete(database);
+        }
+    }
+
+    [Fact]
+    public async Task Migrations_AdoptExistingDatabaseAndPreserveData()
+    {
+        var database = Path.Combine(Path.GetTempPath(), $"streamlink-migration-tests-{Guid.NewGuid():N}.db");
         try
         {
             var options = new DbContextOptionsBuilder<StreamLinkDbContext>()
@@ -114,17 +142,30 @@ public class ThemePreferenceTests
             var factory = new SimpleDbFactory(options);
             using (var db = factory.CreateDbContext())
             {
-                db.Database.ExecuteSqlRaw("""
-                    CREATE TABLE "ShareLinks" (
-                        "Id" INTEGER NOT NULL CONSTRAINT "PK_ShareLinks" PRIMARY KEY
-                    )
-                    """);
-                db.EnsureThemePreferencesTable();
+                db.Database.EnsureCreated();
+                db.ShareLinks.Add(new ShareLink
+                {
+                    Token = "legacy-token",
+                    ChannelName = "Legacy Channel",
+                    CategoryName = "Legacy Category",
+                    StreamId = 7,
+                    CreatedUtc = DateTime.UtcNow,
+                    ExpiresUtc = DateTime.UtcNow.AddHours(1),
+                    OwnerKey = "legacy-owner"
+                });
+                db.ThemePreferences.Add(new ThemePreference { OwnerKey = "legacy-owner", Theme = "blue" });
+                db.SaveChanges();
             }
 
-            var preferences = new ThemePreferenceService(factory);
-            await preferences.SaveThemeAsync("existing-account", "blue");
-            Assert.Equal("blue", await preferences.GetThemeAsync("existing-account"));
+            using (var db = factory.CreateDbContext())
+                await db.Database.MigrateAsync();
+
+            using (var db = factory.CreateDbContext())
+            {
+                Assert.Equal("Legacy Channel", (await db.ShareLinks.SingleAsync()).ChannelName);
+                Assert.Equal("blue", (await db.ThemePreferences.SingleAsync()).Theme);
+                Assert.Single(await db.Database.GetAppliedMigrationsAsync());
+            }
         }
         finally
         {

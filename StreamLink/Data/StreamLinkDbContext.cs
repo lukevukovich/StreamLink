@@ -17,12 +17,4 @@ public sealed class StreamLinkDbContext(DbContextOptions<StreamLinkDbContext> op
         modelBuilder.Entity<ThemePreference>().Property(x => x.OwnerKey).HasMaxLength(128);
         modelBuilder.Entity<ThemePreference>().Property(x => x.Theme).HasMaxLength(16).IsRequired();
     }
-
-    public void EnsureThemePreferencesTable()
-        => Database.ExecuteSqlRaw("""
-            CREATE TABLE IF NOT EXISTS "ThemePreferences" (
-                "OwnerKey" TEXT NOT NULL CONSTRAINT "PK_ThemePreferences" PRIMARY KEY,
-                "Theme" TEXT NOT NULL
-            )
-            """);
 }
