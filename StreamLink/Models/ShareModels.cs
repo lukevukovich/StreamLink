@@ -14,4 +14,10 @@ public sealed class ShareLink
     public string? ProtectedHlsUrl { get; set; }
 }
 
+public sealed class ThemePreference
+{
+    public string OwnerKey { get; set; } = "";
+    public string Theme { get; set; } = "green";
+}
+
 public sealed record SharePlayback(ShareLink Link, string StreamUrl);

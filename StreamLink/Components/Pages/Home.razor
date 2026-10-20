@@ -4,13 +4,15 @@
 @inject IXtreamApiService Xtream
 @inject SessionState Session
 @inject SessionPersistence SessionPersistence
+@inject ThemePreferenceService ThemePreferences
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
+@inject ILogger<Home> Logger
 
 <PageTitle>StreamLink</PageTitle>
 @if (Session.IsAuthenticated)
 {
-<div class="welcome-page"><div class="eyebrow"><span class="wordmark"><span>Stream</span><span>Link</span></span></div><h1>Ready when you are.</h1><p class="muted">Your live TV library is waiting. Browse categories, reopen a shared stream, or manage your account.</p><div class="welcome-grid">
+<div class="welcome-page"><div class="eyebrow"><span class="wordmark"><span>Stream</span><span>Link</span></span></div><h1>Ready when you are.</h1><p class="muted">Your live TV library is waiting. Browse categories, reopen a shared stream, or manage your account.</p>@if (!string.IsNullOrEmpty(themeWarning)) { <div class="alert" role="alert">@themeWarning</div> }<div class="welcome-grid">
 	<a class="welcome-card" href="/tv"><span class="welcome-card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2.5"/><path d="m10 9 5 2.5-5 2.5zM8 22h8M12 18v4"/></svg></span><strong>Live TV</strong><span>Browse categories and open a channel in an external player.</span><span class="welcome-card-link">Explore TV <b>→</b></span></a>
 	<a class="welcome-card" href="/shares"><span class="welcome-card-icon"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"/></svg></span><strong>Shares</strong><span>Create, copy, and manage your shared stream links.</span><span class="welcome-card-link">Manage shares <b>→</b></span></a>
 	<a class="welcome-card" href="/watch"><span class="welcome-card-icon"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7"/><path d="M14 10a5 5 0 0 0-7.1 0l-3 3A5 5 0 0 0 11 20.1l1.7-1.7"/></svg></span><strong>Watch a stream</strong><span>Paste a family or friend’s StreamLink URL or share code.</span><span class="welcome-card-link">Open a link <b>→</b></span></a>
@@ -41,6 +43,7 @@ else
 	private Credentials credentials = new();
 	private bool busy;
 	private string? error;
+	private string? themeWarning;
 	private async Task ConnectAsync()
 	{
 		if (busy) return;
@@ -64,6 +67,15 @@ else
 			else
 			{
 				Session.SetSession(session);
+				var theme = AppThemes.Default;
+				try { theme = await ThemePreferences.GetThemeAsync(Session.OwnerKey); }
+				catch (Microsoft.Data.Sqlite.SqliteException ex)
+				{
+					Logger.LogError(ex, "Could not load the account theme preference.");
+					themeWarning = "Your account was connected, but the saved theme could not be loaded.";
+				}
+				Session.SetTheme(theme);
+				await Js.InvokeVoidAsync("streamlinkTheme.set", theme);
 				await Js.InvokeVoidAsync("streamlinkStorage.set", SessionPersistence.StorageKeyName, SessionPersistence.Protect(session));
 				Navigation.NavigateTo("/", replace: true);
 			}

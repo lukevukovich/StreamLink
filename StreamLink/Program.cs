@@ -30,6 +30,7 @@ builder.Services.AddHttpClient("ExternalLinkRedirect", client =>
 builder.Services.AddDbContextFactory<StreamLinkDbContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("StreamLink") ?? "Data Source=streamlink.db"));
 builder.Services.AddScoped<SessionState>();
 builder.Services.AddScoped<SessionPersistence>();
+builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IXtreamApiService, XtreamApiService>();
 builder.Services.AddScoped<IStreamUrlService, StreamUrlService>();
 builder.Services.AddScoped<IShareLinkService, ShareLinkService>();
@@ -67,10 +68,11 @@ app.MapPost("/api/external-link", async (HttpContext context, ExternalLinkServic
     return url is null ? Results.UnprocessableEntity() : Results.Json(new { url });
 });
 
-using (var scope = app.Services.CreateScope())
+await using (var scope = app.Services.CreateAsyncScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<StreamLinkDbContext>();
-    db.Database.EnsureCreated();
+    var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<StreamLinkDbContext>>();
+    await using var db = await dbFactory.CreateDbContextAsync();
+    await db.Database.MigrateAsync();
 }
 
 app.MapRazorComponents<App>()

@@ -30,13 +30,15 @@ Treat direct URLs and downloaded `.m3u` launcher files like passwords. Delete do
 
 ## Data and configuration
 
-Set `ShareLinks:MaxActivePerOwner` in `StreamLink/appsettings.json` (default `20`, allowed `1`–`100`) to change the active-link cap; invalid or missing values reject link creation rather than allowing unlimited links. For deployment overrides, use the `ShareLinks__MaxActivePerOwner` environment variable. The app stores shares in SQLite (`ConnectionStrings:StreamLink`, default `Data Source=streamlink.db`). Share provider URLs are protected at rest using ASP.NET Core Data Protection; keys are under `StreamLink/App_Data/keys`. The browser stores a server-protected session in local storage. Keep the database and keys private and stable across deployments; losing keys can invalidate saved sessions/shares. This protection **does not** hide URLs from anyone opening a valid share page. No FFmpeg installation or configuration is used.
+Set `ShareLinks:MaxActivePerOwner` in `StreamLink/appsettings.json` (default `20`, allowed `1`–`100`) to change the active-link cap; invalid or missing values reject link creation rather than allowing unlimited links. For deployment overrides, use the `ShareLinks__MaxActivePerOwner` environment variable. The app stores shares in SQLite (`ConnectionStrings:StreamLink`, default `Data Source=streamlink.db`) and automatically applies pending EF Core migrations during startup. The initial migration safely adopts databases created by earlier app versions and preserves their existing share and theme data. Share provider URLs are protected at rest using ASP.NET Core Data Protection; keys are under `StreamLink/App_Data/keys`. The browser stores a server-protected session in local storage. Keep the database and keys private and stable across deployments; losing keys can invalidate saved sessions/shares. This protection **does not** hide URLs from anyone opening a valid share page. No FFmpeg installation or configuration is used.
+
+Accounts can select Green (default), Blue, Red, Purple, Dark, or Light in **Account → Color theme**. The selected palette is stored per provider account in SQLite and restored at sign-in.
 
 Build with `dotnet build .\StreamLink\StreamLink.csproj`. The app performs provider API requests for login and channel listings, but has no media playback libraries or `/stream/` endpoints. Old proxy URLs stop working after upgrading. Provider availability, output formats and codec support remain outside StreamLink's control.
 
 ## Railway deployment
 
-Deploy from the repository root with the included `Dockerfile`. The container listens on `0.0.0.0` at Railway's `PORT` (falling back to `8080` when `PORT` is unset). Attach a Railway volume at `/app/data` so the SQLite database and Data Protection keys survive redeployments. Keep this volume private; without it, sessions and shares can be lost. Railway terminates HTTPS at its proxy; enable a public HTTPS domain for the service.
+Deploy from the repository root with the included `Dockerfile`. The container listens on `0.0.0.0` at Railway's `PORT` (falling back to `8080` when `PORT` is unset). Attach a Railway volume at `/app/data` so the SQLite database and Data Protection keys survive redeployments. Pending EF Core migrations are applied automatically to that mounted database on each startup. Keep this volume private; without it, sessions and shares can be lost. Railway terminates HTTPS at its proxy; enable a public HTTPS domain for the service.
 
 ## Tests
 
@@ -47,6 +49,6 @@ dotnet test .\StreamLink.sln -c Release
 dotnet test .\StreamLink.sln -c Release --collect:"XPlat Code Coverage"
 ```
 
-The xUnit suite covers Xtream login/list parsing, stream URL validation and formats, protected sessions, SQLite share limits/reuse/revocation/playback, redirect safety and share revalidation, the external-link API, and prerendered page privacy. HTTP providers are stubbed; integration tests use temporary databases and data-protection keys, not your real provider or share database. Coverage output is written to `TestResults/` (ignored by Git). Browser-side JavaScript behavior and interactive Blazor hydration are not covered by these server-side tests; validate player launching and clipboard actions on target devices as well.
+The xUnit suite covers Xtream login/list parsing, stream URL validation and formats, protected sessions, per-account theme persistence, SQLite share limits/reuse/revocation/playback, redirect safety and share revalidation, the external-link API, and prerendered page privacy. HTTP providers are stubbed; integration tests use temporary databases and data-protection keys, not your real provider or share database. Coverage output is written to `TestResults/` (ignored by Git). Browser-side JavaScript behavior and interactive Blazor hydration are not covered by these server-side tests; validate player launching and clipboard actions on target devices as well.
 
 If an app process has locked the Debug executable on Windows, stop it or use `-c Release` as shown above.

@@ -6,19 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
     <base href="/" />
-    <link rel="stylesheet" href="app.css?v=23" />
-    <link rel="stylesheet" href="streamlink-overrides.css" />
+    <link rel="stylesheet" href="app.css?v=26" />
+        <link rel="stylesheet" href="streamlink-overrides.css?v=3" />
     <link rel="stylesheet" href="StreamLink.styles.css" />
     <meta name="theme-color" content="#07181b" />
     <link rel="icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
     <link rel="shortcut icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
     <link rel="mask-icon" href="/streamlink-icon.svg?v=3" color="#89c0b6" />
-    <HeadOutlet @rendermode="InteractiveServer" />
+    <HeadOutlet />
 </head>
 
 <body>
-    <LinkPreview @rendermode="InteractiveServer" />
-    <Routes @rendermode="InteractiveServer" />
+    <LinkPreview />
+    <Routes @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+    <div class="auth-loading" id="streamlink-initial-loading" role="status"><span class="loading-mark" aria-hidden="true"></span><span>Loading <span class="wordmark"><span>Stream</span><span>Link</span></span>…</span></div>
     <div id="streamlink-reconnect" role="status" aria-live="polite">
         <div class="reconnect-card">
             <span class="loading-mark" aria-hidden="true"></span>
@@ -29,6 +30,14 @@
     </div>
     <script src="js/external.js?v=14"></script>
     <script>
+        window.streamlinkTheme = {
+            ready: () => document.getElementById("streamlink-initial-loading")?.remove(),
+            set: (theme) => {
+                const supportedThemes = ["green", "blue", "red", "purple", "dark", "light"];
+                document.documentElement.dataset.theme = supportedThemes.includes(theme) ? theme : "green";
+                document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+            }
+        };
         window.streamlinkTime = {
             format: (utcValue) => {
                 const date = new Date(utcValue);
