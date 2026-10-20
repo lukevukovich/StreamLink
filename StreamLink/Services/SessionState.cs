@@ -11,6 +11,7 @@ public sealed class SessionState
     public bool IsHydrated { get; private set; }
     public string OwnerKey { get; private set; } = Guid.NewGuid().ToString("N");
     public bool IsAuthenticated => Session is not null;
+    public string Theme { get; private set; } = AppThemes.Default;
 
     public void MarkHydrated()
     {
@@ -22,12 +23,20 @@ public sealed class SessionState
     {
         Session = session;
         OwnerKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{session.ServerUrl}\n{session.Username}"))).ToLowerInvariant();
-        Changed?.Invoke();
+        if (IsHydrated) Changed?.Invoke();
+    }
+
+    public void SetTheme(string theme)
+    {
+        if (!AppThemes.IsSupported(theme))
+            throw new ArgumentException("The selected theme is not supported.", nameof(theme));
+        Theme = theme;
     }
 
     public void Clear()
     {
         Session = null;
+        Theme = AppThemes.Default;
         IsHydrated = true;
         Changed?.Invoke();
     }

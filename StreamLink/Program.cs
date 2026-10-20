@@ -30,6 +30,7 @@ builder.Services.AddHttpClient("ExternalLinkRedirect", client =>
 builder.Services.AddDbContextFactory<StreamLinkDbContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("StreamLink") ?? "Data Source=streamlink.db"));
 builder.Services.AddScoped<SessionState>();
 builder.Services.AddScoped<SessionPersistence>();
+builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddScoped<IXtreamApiService, XtreamApiService>();
 builder.Services.AddScoped<IStreamUrlService, StreamUrlService>();
 builder.Services.AddScoped<IShareLinkService, ShareLinkService>();
@@ -71,6 +72,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<StreamLinkDbContext>();
     db.Database.EnsureCreated();
+    db.EnsureThemePreferencesTable();
 }
 
 app.MapRazorComponents<App>()

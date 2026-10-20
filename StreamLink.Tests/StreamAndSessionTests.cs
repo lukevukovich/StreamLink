@@ -1,4 +1,6 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
+using StreamLink.Data;
 using StreamLink.Models;
 using StreamLink.Services;
 
@@ -59,6 +61,21 @@ public class StreamAndSessionTests
     }
 
     [Fact]
+    public void State_RestoresBeforeHydrationWithoutNotifyingUntilReady()
+    {
+        var state = new SessionState();
+        var events = 0;
+        state.Changed += () => events++;
+
+        state.SetSession(TestSupport.Session());
+        Assert.True(state.IsAuthenticated);
+        Assert.Equal(0, events);
+
+        state.MarkHydrated();
+        Assert.Equal(1, events);
+    }
+
+    [Fact]
     public void Persistence_RoundTripsAndRejectsTamperingAndOtherKeys()
     {
         var persistence = new SessionPersistence(TestSupport.Protection());
@@ -80,6 +97,89 @@ public class StreamAndSessionTests
         Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1700000000), user.Expiration);
         user.ExpirationDate = "not a timestamp";
         Assert.Null(user.Expiration);
+    }
+}
+
+public class ThemePreferenceTests
+{
+    [Fact]
+    public async Task Startup_AddsThemeTableToAnExistingDatabase()
+    {
+        var database = Path.Combine(Path.GetTempPath(), $"streamlink-legacy-theme-tests-{Guid.NewGuid():N}.db");
+        try
+        {
+            var options = new DbContextOptionsBuilder<StreamLinkDbContext>()
+                .UseSqlite($"Data Source={database};Pooling=False")
+                .Options;
+            var factory = new SimpleDbFactory(options);
+            using (var db = factory.CreateDbContext())
+            {
+                db.Database.ExecuteSqlRaw("""
+                    CREATE TABLE "ShareLinks" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_ShareLinks" PRIMARY KEY
+                    )
+                    """);
+                db.EnsureThemePreferencesTable();
+            }
+
+            var preferences = new ThemePreferenceService(factory);
+            await preferences.SaveThemeAsync("existing-account", "blue");
+            Assert.Equal("blue", await preferences.GetThemeAsync("existing-account"));
+        }
+        finally
+        {
+            if (File.Exists(database)) File.Delete(database);
+        }
+    }
+
+    [Fact]
+    public async Task Preferences_AreSavedPerAccountAndRejectUnknownThemes()
+    {
+        var database = Path.Combine(Path.GetTempPath(), $"streamlink-theme-tests-{Guid.NewGuid():N}.db");
+        try
+        {
+            var options = new DbContextOptionsBuilder<StreamLinkDbContext>()
+                .UseSqlite($"Data Source={database};Pooling=False")
+                .Options;
+            var factory = new SimpleDbFactory(options);
+            using (var db = factory.CreateDbContext())
+                db.Database.EnsureCreated();
+
+            var preferences = new ThemePreferenceService(factory);
+            Assert.Equal(AppThemes.Default, await preferences.GetThemeAsync("account-one"));
+
+            await preferences.SaveThemeAsync("account-one", "blue");
+            await preferences.SaveThemeAsync("account-two", "red");
+            await preferences.SaveThemeAsync("account-one", "light");
+            await preferences.SaveThemeAsync("account-two", "dark");
+
+            Assert.Equal("light", await preferences.GetThemeAsync("account-one"));
+            Assert.Equal("dark", await preferences.GetThemeAsync("account-two"));
+            await Assert.ThrowsAsync<ArgumentException>(() => preferences.SaveThemeAsync("account-one", "unknown"));
+        }
+        finally
+        {
+            if (File.Exists(database)) File.Delete(database);
+        }
+    }
+
+    [Fact]
+    public void SessionState_AcceptsOnlySupportedThemesAndResetsOnLogout()
+    {
+        var state = new SessionState();
+        var changeNotifications = 0;
+        state.Changed += () => changeNotifications++;
+        state.MarkHydrated();
+        state.SetSession(TestSupport.Session());
+        state.SetTheme("purple");
+        Assert.Equal("purple", state.Theme);
+        Assert.Equal(2, changeNotifications);
+
+        Assert.Throws<ArgumentException>(() => state.SetTheme("unknown"));
+
+        state.Clear();
+        Assert.Equal(AppThemes.Default, state.Theme);
+        Assert.Equal(3, changeNotifications);
     }
 }
 

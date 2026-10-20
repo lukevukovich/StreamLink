@@ -1,13 +1,16 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 @inject SessionState Session
 @inject SessionPersistence SessionPersistence
+@inject ThemePreferenceService ThemePreferences
 @inject IJSRuntime Js
 @inject NavigationManager Navigation
+@inject ILogger<MainLayout> Logger
 
 <div class="app-shell @(IsAuthScreen ? "auth-shell" : "")">
     <header class="topbar">
         <a class="brand" href="@(Session.IsAuthenticated ? "/" : "/login")">Stream<span>Link</span></a>
-        <div class="topbar-actions"><NavMenu /></div>
+        <div class="topbar-actions"><NavMenu IsAuthenticated="@Session.IsAuthenticated" /></div>
     </header>
     <main class="content-wrap @(IsLoginRoute ? "auth-content" : "")">
         @if (!Session.IsHydrated)
@@ -28,21 +31,38 @@
 </div>
 
 @code {
+    protected override void OnInitialized() => Session.Changed += OnSessionChanged;
+
+    private void OnSessionChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Session.Changed -= OnSessionChanged;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
         try
         {
+            await Js.InvokeVoidAsync("streamlinkTheme.ready");
             var protectedSession = await Js.InvokeAsync<string?>("streamlinkStorage.get", SessionPersistence.StorageKeyName);
             var restored = SessionPersistence.Unprotect(protectedSession);
-            if (restored is not null) Session.SetSession(restored);
+            if (restored is not null)
+            {
+                Session.SetSession(restored);
+                Session.SetTheme(await ThemePreferences.GetThemeAsync(Session.OwnerKey));
+            }
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex)
+        {
+            Logger.LogError(ex, "Could not load the account theme preference.");
+            Session.SetTheme(AppThemes.Default);
         }
         catch (JSException) { }
         finally
         {
+            try { await Js.InvokeVoidAsync("streamlinkTheme.set", Session.Theme); }
+            catch (JSException ex) { Logger.LogWarning(ex, "Could not apply the saved theme in the browser."); }
             Session.MarkHydrated();
-            await InvokeAsync(StateHasChanged);
             if (Navigation.ToBaseRelativePath(Navigation.Uri).Equals("login", StringComparison.OrdinalIgnoreCase) && Session.IsAuthenticated)
                 Navigation.NavigateTo("/", replace: true);
         }
