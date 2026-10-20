@@ -116,6 +116,19 @@ body {
 }
 body {
   color: var(--cream);
+  position: relative;
+  isolation: isolate;
+  background: var(--bg);
+}
+.page-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  height: 100dvh;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(
       circle at 12% -10%,
@@ -128,14 +141,11 @@ body {
       transparent 30rem
     ),
     var(--bg);
-  background-attachment: fixed;
 }
-html[data-theme="light"] body {
+html[data-theme="light"] .page-background {
   background:
-    radial-gradient(circle at 12% -10%, rgb(var(--teal-rgb) / 0.06), transparent 32rem),
-    radial-gradient(circle at 100% 20%, rgb(var(--accent-rgb) / 0.03), transparent 30rem),
-    var(--bg);
-  background-attachment: fixed;
+    radial-gradient(circle at 100% 100%, rgb(var(--accent-rgb) / 0.04), transparent 30rem),
+    linear-gradient(180deg, #ffffff 0%, #f3f3f3 100%);
 }
 a {
   color: inherit;
