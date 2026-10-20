@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
     <base href="/" />
-    <link rel="stylesheet" href="app.css?v=26" />
+    <link rel="stylesheet" href="app.css?v=29" />
         <link rel="stylesheet" href="streamlink-overrides.css?v=3" />
     <link rel="stylesheet" href="StreamLink.styles.css" />
     <meta name="theme-color" content="#07181b" />
@@ -17,6 +17,7 @@
 </head>
 
 <body>
+    <div class="page-background" aria-hidden="true"></div>
     <LinkPreview />
     <Routes @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
     <div class="auth-loading" id="streamlink-initial-loading" role="status"><span class="loading-mark" aria-hidden="true"></span><span>Loading <span class="wordmark"><span>Stream</span><span>Link</span></span>…</span></div>

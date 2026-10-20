@@ -71,6 +71,7 @@ public class EndpointTests : IClassFixture<EndpointFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = await response.Content.ReadAsStringAsync();
         Assert.Contains("auth-loading", html);
+        Assert.Contains("class=\"page-background\"", html);
         Assert.Contains("id=\"streamlink-reconnect\"", html);
         Assert.Contains("js/reconnect.js", html);
         Assert.Contains("autostart=\"false\"", html);
