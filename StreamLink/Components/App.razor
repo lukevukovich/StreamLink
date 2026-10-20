@@ -13,11 +13,11 @@
     <link rel="icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
     <link rel="shortcut icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
     <link rel="mask-icon" href="/streamlink-icon.svg?v=3" color="#89c0b6" />
-    <HeadOutlet @rendermode="InteractiveServer" />
+    <HeadOutlet />
 </head>
 
 <body>
-    <LinkPreview @rendermode="InteractiveServer" />
+    <LinkPreview />
     <Routes @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
     <div class="auth-loading" id="streamlink-initial-loading" role="status"><span class="loading-mark" aria-hidden="true"></span><span>Loading <span class="wordmark"><span>Stream</span><span>Link</span></span>…</span></div>
     <div id="streamlink-reconnect" role="status" aria-live="polite">
