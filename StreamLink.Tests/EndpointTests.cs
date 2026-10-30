@@ -75,6 +75,7 @@ public class EndpointTests : IClassFixture<EndpointFactory>
         Assert.Contains("id=\"streamlink-reconnect\"", html);
         Assert.Contains("js/reconnect.js", html);
         Assert.Contains("autostart=\"false\"", html);
+        Assert.Contains("<title>StreamLink</title>", html);
         Assert.DoesNotContain("provider.example", html);
         Assert.Contains("no-store", response.Headers.CacheControl!.ToString());
     }

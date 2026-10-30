@@ -5,6 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
+    <title>StreamLink</title>
     <base href="/" />
     <link rel="stylesheet" href="app.css?v=32" />
         <link rel="stylesheet" href="streamlink-overrides.css?v=3" />
@@ -31,6 +32,9 @@
     </div>
     <script src="js/external.js?v=14"></script>
     <script>
+        window.streamlinkTitle = {
+            set: (title) => { document.title = title; }
+        };
         window.streamlinkTheme = {
             ready: () => document.getElementById("streamlink-initial-loading")?.remove(),
             set: (theme) => {

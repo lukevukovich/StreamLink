@@ -5,7 +5,7 @@
 @inject ExternalLinkService ExternalLinks
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
-<PageTitle>@(playback is null ? "Watch · StreamLink" : $"{playback.Link.ChannelName} · StreamLink")</PageTitle>
+<DocumentTitle Title="@(playback is null ? "Watch · StreamLink" : $"{playback.Link.ChannelName} · StreamLink")" />
 <div class="public-watch @(playback is null ? "watch-entry" : "watch-ready")">
 	@if (string.IsNullOrEmpty(Token))
 	{

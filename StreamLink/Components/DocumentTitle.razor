@@ -1,0 +1,14 @@
+@inject IJSRuntime Js
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+
+    private string? appliedTitle;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Title == appliedTitle) return;
+        await Js.InvokeVoidAsync("streamlinkTitle.set", Title);
+        appliedTitle = Title;
+    }
+}
