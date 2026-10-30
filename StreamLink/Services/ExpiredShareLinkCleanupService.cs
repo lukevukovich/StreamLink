@@ -11,8 +11,6 @@ public sealed class ExpiredShareLinkCleanupService(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
-
             try
             {
                 var deletedCount = await CleanupExpiredLinksAsync(stoppingToken);
@@ -26,6 +24,8 @@ public sealed class ExpiredShareLinkCleanupService(
             {
                 logger.LogError(exception, "Failed to clean up expired share links.");
             }
+
+            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
         }
     }
 
