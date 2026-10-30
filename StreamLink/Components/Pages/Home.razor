@@ -9,7 +9,7 @@
 @inject IJSRuntime Js
 @inject ILogger<Home> Logger
 
-<PageTitle>StreamLink</PageTitle>
+<DocumentTitle Title="StreamLink" />
 @if (Session.IsAuthenticated)
 {
 <div class="welcome-page"><div class="eyebrow"><span class="wordmark"><span>Stream</span><span>Link</span></span></div><h1>Ready when you are.</h1><p class="muted">Your live TV library is waiting. Browse categories, reopen a shared stream, or manage your account.</p>@if (!string.IsNullOrEmpty(themeWarning)) { <div class="alert" role="alert">@themeWarning</div> }<div class="welcome-grid">

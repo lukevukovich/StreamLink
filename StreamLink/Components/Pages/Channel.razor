@@ -8,7 +8,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
 
-<PageTitle>@ChannelName · StreamLink</PageTitle>
+<DocumentTitle Title="@($"{ChannelName} · StreamLink")" />
 @if (Session.Session is null) { <RedirectToLogin /> }
 else if (loading) { <div class="loading-card">Loading channel…</div> }
 else if (!channelFound) { <div class="empty-card">@(loadFailed ? "Couldn't load this channel. Try refreshing the page." : "This channel is not available in your account.")</div> }
