@@ -35,6 +35,7 @@ builder.Services.AddScoped<IXtreamApiService, XtreamApiService>();
 builder.Services.AddScoped<IStreamUrlService, StreamUrlService>();
 builder.Services.AddScoped<IShareLinkService, ShareLinkService>();
 builder.Services.AddScoped<ExternalLinkService>();
+builder.Services.AddHostedService<ExpiredShareLinkCleanupService>();
 
 var app = builder.Build();
 

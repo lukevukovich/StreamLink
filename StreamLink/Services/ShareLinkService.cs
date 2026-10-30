@@ -32,8 +32,7 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
             await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var now = DateTime.UtcNow;
-            await db.ShareLinks.Where(x => x.Revoked || x.ExpiresUtc <= now).ExecuteDeleteAsync(cancellationToken);
-            var existing = await db.ShareLinks.Where(x => x.OwnerKey == ownerKey && x.StreamId == channel.StreamId)
+            var existing = await db.ShareLinks.Where(x => x.OwnerKey == ownerKey && x.StreamId == channel.StreamId && !x.Revoked && x.ExpiresUtc > now)
                 .OrderByDescending(x => x.CreatedUtc).FirstOrDefaultAsync(cancellationToken);
             if (existing is not null)
             {
@@ -41,7 +40,7 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
                 return existing;
             }
 
-            var activeCount = await db.ShareLinks.CountAsync(x => x.OwnerKey == ownerKey, cancellationToken);
+            var activeCount = await db.ShareLinks.CountAsync(x => x.OwnerKey == ownerKey && !x.Revoked && x.ExpiresUtc > now, cancellationToken);
             if (activeCount >= maxActiveLinksPerOwner)
             {
                 await transaction.CommitAsync(cancellationToken);
@@ -91,4 +90,3 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" &&
         string.IsNullOrEmpty(uri.UserInfo);
 }
-

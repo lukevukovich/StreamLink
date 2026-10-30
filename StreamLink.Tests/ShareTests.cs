@@ -70,6 +70,13 @@ public class ShareTests : IDisposable
             ["ShareLinks:MaxActivePerOwner"] = "2"
         }).Build();
         var service = new ShareLinkService(factory, new StreamUrlService(), persistence, config);
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            db.ShareLinks.AddRange(
+                new ShareLink { Token = "expired", OwnerKey = "owner", ExpiresUtc = DateTime.UtcNow.AddMinutes(-1) },
+                new ShareLink { Token = "revoked", OwnerKey = "owner", ExpiresUtc = DateTime.UtcNow.AddHours(1), Revoked = true });
+            await db.SaveChangesAsync();
+        }
         await service.CreateAsync(TestSupport.Session(), "owner", Channel(1), "News", 1);
         await service.CreateAsync(TestSupport.Session(), "owner", Channel(2), "News", 1);
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateAsync(TestSupport.Session(), "owner", Channel(3), "News", 1));
@@ -85,7 +92,7 @@ public class ShareTests : IDisposable
     }
 
     [Fact]
-    public async Task Create_PrunesExpiredAndRevokedRowsWithoutRemovingLiveLinks()
+    public async Task Create_LeavesExpiredAndRevokedRowsForScheduledCleanup()
     {
         var (service, factory, _) = TestSupport.Shares(database);
         var expired = await service.CreateAsync(TestSupport.Session(), "owner", Channel(1), "News", 1);
@@ -99,12 +106,15 @@ public class ShareTests : IDisposable
             await db.SaveChangesAsync();
         }
 
-        await service.CreateAsync(TestSupport.Session(), "owner", Channel(4), "News", 1);
+        var replacement = await service.CreateAsync(TestSupport.Session(), "owner", Channel(1), "News", 1);
+        Assert.NotEqual(expired.Token, replacement.Token);
         await using var check = await factory.CreateDbContextAsync();
-        Assert.Equal(2, await check.ShareLinks.CountAsync());
+        Assert.Equal(4, await check.ShareLinks.CountAsync());
         Assert.NotNull(await service.GetPlaybackAsync(live.Token));
-        Assert.Null(await service.GetAsync(expired.Token));
-        Assert.Null(await service.GetAsync(revoked.Token));
+        Assert.NotNull(await service.GetAsync(expired.Token));
+        Assert.NotNull(await service.GetAsync(revoked.Token));
+        Assert.Null(await service.GetPlaybackAsync(expired.Token));
+        Assert.Null(await service.GetPlaybackAsync(revoked.Token));
     }
 
     [Fact]
