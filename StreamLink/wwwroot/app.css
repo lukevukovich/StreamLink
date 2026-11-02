@@ -134,10 +134,10 @@ html[data-theme="ocean"] {
   --surface-rgb: 13 41 52;
   --surface-2: #143844;
   --surface-2-rgb: 20 56 68;
-  --mint: #68d4cf;
-  --accent-rgb: 104 212 207;
-  --teal: #398f96;
-  --teal-rgb: 57 143 150;
+  --mint: #42dfc0;
+  --accent-rgb: 66 223 192;
+  --teal: #28a99c;
+  --teal-rgb: 40 169 156;
   --cream: #e2f5f3;
   --muted: #91b9bb;
   --live: #70d6a3;
@@ -249,6 +249,80 @@ html[data-theme="patriot"] {
   --live-rgb: 36 119 72;
   --line: rgb(var(--accent-rgb) / 0.24);
 }
+html[data-theme="royal-gold"] {
+  --bg: #171528;
+  --bg-rgb: 23 21 40;
+  --surface: #211f38;
+  --surface-rgb: 33 31 56;
+  --surface-2: #302d4b;
+  --surface-2-rgb: 48 45 75;
+  --mint: #d8bd73;
+  --accent-rgb: 216 189 115;
+  --teal: #a89561;
+  --teal-rgb: 168 149 97;
+  --cream: #f5f0df;
+  --muted: #b7aec0;
+  --on-accent: #29233a;
+  --live: var(--mint);
+  --live-rgb: var(--accent-rgb);
+}
+html[data-theme="terracotta"] {
+  --bg: #f3e7d8;
+  --bg-rgb: 243 231 216;
+  --page-bg: #eee0cf;
+  --surface: #fff9f1;
+  --surface-rgb: 255 249 241;
+  --surface-2: #e8d4c0;
+  --surface-2-rgb: 232 212 192;
+  --mint: #b85c45;
+  --brand-accent: #a94c37;
+  --accent-rgb: 184 92 69;
+  --teal: #806858;
+  --teal-rgb: 128 104 88;
+  --cream: #35251f;
+  --muted: #755e53;
+  --on-accent: #ffffff;
+  --live: var(--mint);
+  --live-rgb: var(--accent-rgb);
+  --line: rgb(var(--accent-rgb) / 0.23);
+}
+html[data-theme="acid-lime"] {
+  --bg: #11140b;
+  --bg-rgb: 17 20 11;
+  --surface: #1c2111;
+  --surface-rgb: 28 33 17;
+  --surface-2: #2a3218;
+  --surface-2-rgb: 42 50 24;
+  --mint: #c9ef4a;
+  --accent-rgb: 201 239 74;
+  --teal: #91aa34;
+  --teal-rgb: 145 170 52;
+  --cream: #f2f5e5;
+  --muted: #adb796;
+  --on-accent: #20270d;
+  --live: var(--mint);
+  --live-rgb: var(--accent-rgb);
+}
+html[data-theme="rose-quartz"] {
+  --bg: #f7e9ed;
+  --bg-rgb: 247 233 237;
+  --page-bg: #f1e0e6;
+  --surface: #fff8fa;
+  --surface-rgb: 255 248 250;
+  --surface-2: #ead4dc;
+  --surface-2-rgb: 234 212 220;
+  --mint: #a74765;
+  --brand-accent: #963b58;
+  --accent-rgb: 167 71 101;
+  --teal: #8d6572;
+  --teal-rgb: 141 101 114;
+  --cream: #38252d;
+  --muted: #765d66;
+  --on-accent: #ffffff;
+  --live: var(--mint);
+  --live-rgb: var(--accent-rgb);
+  --line: rgb(var(--accent-rgb) / 0.23);
+}
 * {
   box-sizing: border-box;
 }
@@ -289,7 +363,9 @@ body {
     var(--page-bg);
 }
 html[data-theme="light"] .page-background,
-html[data-theme="night-light"] .page-background {
+html[data-theme="night-light"] .page-background,
+html[data-theme="terracotta"] .page-background,
+html[data-theme="rose-quartz"] .page-background {
   background:
     radial-gradient(circle at 100% 100%, rgb(var(--accent-rgb) / 0.04), transparent 30rem),
     linear-gradient(180deg, var(--surface) 0%, var(--page-bg) 100%);
@@ -398,7 +474,7 @@ h1 {
   padding: 24px;
   position: relative;
   overflow: hidden;
-  align-content: center;
+  align-content: start;
 }
 .login-page:before {
   content: "";
@@ -534,7 +610,7 @@ h1 {
   color: var(--cream);
 }
 .live-dot {
-  color: var(--live);
+  color: var(--mint);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 1px;
@@ -550,6 +626,12 @@ h1 {
   height: 7px;
   margin-right: 7px;
   border-radius: 50%;
+}
+.live-dot:before {
+  background: var(--mint);
+  box-shadow: 0 0 0 5px rgb(var(--accent-rgb) / 0.12);
+}
+.status-dot {
   background: var(--live);
   box-shadow: 0 0 0 5px rgb(var(--live-rgb) / 0.12);
 }
@@ -1048,34 +1130,48 @@ html[data-theme="light"] .danger,
 html[data-theme="night-light"] .danger,
 html[data-theme="lemonade"] .danger,
 html[data-theme="patriot"] .danger,
+html[data-theme="terracotta"] .danger,
+html[data-theme="rose-quartz"] .danger,
 html[data-theme="light"] .alert,
 html[data-theme="night-light"] .alert,
 html[data-theme="lemonade"] .alert,
 html[data-theme="patriot"] .alert,
+html[data-theme="terracotta"] .alert,
+html[data-theme="rose-quartz"] .alert,
 html[data-theme="light"] .blazor-error-boundary,
 html[data-theme="night-light"] .blazor-error-boundary,
 html[data-theme="lemonade"] .blazor-error-boundary,
-html[data-theme="patriot"] .blazor-error-boundary {
+html[data-theme="patriot"] .blazor-error-boundary,
+html[data-theme="terracotta"] .blazor-error-boundary,
+html[data-theme="rose-quartz"] .blazor-error-boundary {
   color: #8f2626;
 }
 html[data-theme="light"] .account-logout,
 html[data-theme="night-light"] .account-logout,
 html[data-theme="lemonade"] .account-logout,
 html[data-theme="patriot"] .account-logout,
+html[data-theme="terracotta"] .account-logout,
+html[data-theme="rose-quartz"] .account-logout,
 html[data-theme="light"] .logout-button,
 html[data-theme="night-light"] .logout-button,
 html[data-theme="lemonade"] .logout-button,
-html[data-theme="patriot"] .logout-button {
+html[data-theme="patriot"] .logout-button,
+html[data-theme="terracotta"] .logout-button,
+html[data-theme="rose-quartz"] .logout-button {
   color: #8f2626;
 }
 html[data-theme="light"] .account-logout:hover,
 html[data-theme="night-light"] .account-logout:hover,
 html[data-theme="lemonade"] .account-logout:hover,
 html[data-theme="patriot"] .account-logout:hover,
+html[data-theme="terracotta"] .account-logout:hover,
+html[data-theme="rose-quartz"] .account-logout:hover,
 html[data-theme="light"] .account-logout:focus-visible,
 html[data-theme="night-light"] .account-logout:focus-visible,
 html[data-theme="lemonade"] .account-logout:focus-visible,
 html[data-theme="patriot"] .account-logout:focus-visible,
+html[data-theme="terracotta"] .account-logout:focus-visible,
+html[data-theme="rose-quartz"] .account-logout:focus-visible,
 html[data-theme="light"] .logout-button:hover,
 html[data-theme="light"] .logout-button:focus-visible,
 html[data-theme="night-light"] .logout-button:hover,
@@ -1083,7 +1179,11 @@ html[data-theme="night-light"] .logout-button:focus-visible,
 html[data-theme="lemonade"] .logout-button:hover,
 html[data-theme="lemonade"] .logout-button:focus-visible,
 html[data-theme="patriot"] .logout-button:hover,
-html[data-theme="patriot"] .logout-button:focus-visible {
+html[data-theme="patriot"] .logout-button:focus-visible,
+html[data-theme="terracotta"] .logout-button:hover,
+html[data-theme="terracotta"] .logout-button:focus-visible,
+html[data-theme="rose-quartz"] .logout-button:hover,
+html[data-theme="rose-quartz"] .logout-button:focus-visible {
   color: #6e1616;
 }
 @media (max-width: 600px) {

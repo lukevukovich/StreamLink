@@ -12,20 +12,24 @@ public static class AppThemes
 
     public static IReadOnlyList<AppTheme> All { get; } =
     [
+        new(Default, "Green", "#07181b", "#89c0b6"),
         new("light", "Light", "#fafafa", "#343434"),
         new("dark", "Dark", "#121212", "#e0e0e0"),
         new("graphite", "Graphite", "#202328", "#aebdcd"),
         new("night-light", "Night Light", "#f2efe9", "#687d6b"),
+        new("terracotta", "Terracotta", "#f3e7d8", "#b85c45"),
         new("lemonade", "Lemonade", "#fff8cc", "#d94f91"),
         new("patriot", "Patriot", "#edf7ff", "#62b4eb"),
         new("blue", "Blue", "#091323", "#71aeff"),
-        new("ocean", "Ocean", "#071b24", "#68d4cf"),
-        new(Default, "Green", "#07181b", "#89c0b6"),
+        new("ocean", "Ocean", "#071b24", "#42dfc0"),
         new("purple", "Purple", "#160f23", "#be97ff"),
         new("orchid", "Orchid", "#24101f", "#ff69c7"),
         new("red", "Red", "#1f0d11", "#f08591"),
+        new("rose-quartz", "Rose Quartz", "#f7e9ed", "#a74765"),
         new("ember", "Ember", "#19130f", "#f2b66d"),
-        new("jack-o-lantern", "Jack-o'-Lantern", "#09090b", "#ff7417")
+        new("royal-gold", "Royal Gold", "#171528", "#d8bd73"),
+        new("jack-o-lantern", "Jack-o'-Lantern", "#09090b", "#ff7417"),
+        new("acid-lime", "Acid Lime", "#11140b", "#c9ef4a")
     ];
 
     public static bool IsSupported(string theme)

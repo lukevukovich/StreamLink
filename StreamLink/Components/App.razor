@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -7,8 +7,8 @@
     <meta name="referrer" content="no-referrer" />
     <title>StreamLink</title>
     <base href="/" />
-    <link rel="stylesheet" href="app.css?v=39" />
-    <link rel="stylesheet" href="streamlink-overrides.css?v=14" />
+    <link rel="stylesheet" href="app.css?v=43" />
+    <link rel="stylesheet" href="streamlink-overrides.css?v=22" />
     <link rel="stylesheet" href="StreamLink.styles.css" />
     <meta name="theme-color" content="#07181b" />
     <link rel="icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
@@ -16,7 +16,7 @@
     <link rel="mask-icon" href="/streamlink-icon.svg?v=3" color="#89c0b6" />
     <script>
         window.streamlinkTheme = (() => {
-            const supportedThemes = ["green", "blue", "red", "purple", "dark", "light", "night-light", "ocean", "ember", "graphite", "jack-o-lantern", "orchid", "lemonade", "patriot"];
+            const supportedThemes = @((MarkupString)System.Text.Json.JsonSerializer.Serialize(AppThemes.All.Select(theme => theme.Id)));
             const cacheKey = "streamlink.theme";
             const apply = (theme) => {
                 const selectedTheme = supportedThemes.includes(theme) ? theme : "green";
@@ -26,21 +26,41 @@
                 return selectedTheme;
             };
 
-            try {
-                const cachedTheme = sessionStorage.getItem(cacheKey);
-                if (supportedThemes.includes(cachedTheme)) apply(cachedTheme);
-            } catch (error) {
-                console.warn("Could not read the cached theme preference.", error);
+            const readCachedTheme = () => {
+                try {
+                    const theme = localStorage.getItem(cacheKey);
+                    return supportedThemes.includes(theme) ? theme : null;
+                } catch (error) {
+                    console.warn("Could not read the saved theme preference.", error);
+                    return null;
+                }
+            };
+
+            let cachedTheme = readCachedTheme();
+            if (cachedTheme) {
+                apply(cachedTheme);
+            } else {
+                try {
+                    const previousTabTheme = sessionStorage.getItem(cacheKey);
+                    if (supportedThemes.includes(previousTabTheme)) {
+                        cachedTheme = previousTabTheme;
+                        apply(cachedTheme);
+                        localStorage.setItem(cacheKey, cachedTheme);
+                    }
+                } catch (error) {
+                    console.warn("Could not migrate the cached theme preference.", error);
+                }
             }
 
             return {
+                get: readCachedTheme,
                 ready: () => document.getElementById("streamlink-initial-loading")?.remove(),
                 set: (theme) => {
                     const selectedTheme = apply(theme);
                     try {
-                        sessionStorage.setItem(cacheKey, selectedTheme);
+                        localStorage.setItem(cacheKey, selectedTheme);
                     } catch (error) {
-                        console.warn("Could not cache the theme preference.", error);
+                        console.warn("Could not save the theme preference locally.", error);
                     }
                 }
             };

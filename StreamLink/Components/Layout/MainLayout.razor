@@ -10,7 +10,9 @@
 <div class="app-shell @(IsAuthScreen ? "auth-shell" : "")">
     <header class="topbar">
         <a class="brand" href="@(Session.IsAuthenticated ? "/" : "/login")">Stream<span>Link</span></a>
-        <div class="topbar-actions"><NavMenu IsAuthenticated="@Session.IsAuthenticated" /></div>
+        <div class="topbar-actions">
+            <NavMenu IsAuthenticated="@Session.IsAuthenticated" />
+        </div>
     </header>
     <main class="content-wrap @(IsLoginRoute ? "auth-content" : "")">
         @if (!Session.IsHydrated)
@@ -41,9 +43,15 @@
     {
         if (!firstRender) return;
 
+        var cachedTheme = AppThemes.Default;
         try
         {
             await Js.InvokeVoidAsync("streamlinkTheme.ready");
+            var browserTheme = await Js.InvokeAsync<string?>("streamlinkTheme.get");
+            if (browserTheme is not null && AppThemes.IsSupported(browserTheme))
+                cachedTheme = browserTheme;
+            Session.SetTheme(cachedTheme);
+
             var protectedSession = await Js.InvokeAsync<string?>("streamlinkStorage.get", SessionPersistence.StorageKeyName);
             var restored = SessionPersistence.Unprotect(protectedSession);
             if (restored is not null)
@@ -55,7 +63,7 @@
         catch (Microsoft.Data.Sqlite.SqliteException ex)
         {
             Logger.LogError(ex, "Could not load the account theme preference.");
-            Session.SetTheme(AppThemes.Default);
+            Session.SetTheme(cachedTheme);
         }
         catch (JSException) { }
         finally

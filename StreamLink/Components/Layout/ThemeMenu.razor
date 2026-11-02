@@ -1,0 +1,87 @@
+@implements IDisposable
+@inject SessionState Session
+@inject IJSRuntime Js
+@inject ILogger<ThemeMenu> Logger
+
+<div class="theme-menu @(menuOpen ? "is-open" : "")">
+    @if (menuOpen)
+    {
+        <button type="button"
+                class="theme-menu-backdrop"
+                aria-label="Close theme menu"
+                @onclick="CloseMenu"></button>
+    }
+    <button type="button"
+            class="nav-pill theme-menu-trigger"
+            aria-label="Choose color theme"
+            title="Color theme"
+            aria-haspopup="true"
+            aria-expanded="@menuOpen"
+            aria-controls="theme-menu-options"
+            disabled="@(!Session.IsHydrated || saving)"
+            @onclick="ToggleMenu"
+            @onkeydown="HandleMenuKeyDown">
+        <span class="nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18h1.5a2 2 0 0 0 1.7-3.1c-.6-.9 0-2.1 1.1-2.1H19a2 2 0 0 0 2-2A9 9 0 0 0 12 3Z" /><circle cx="7.5" cy="11" r="1" /><circle cx="10" cy="7.5" r="1" /><circle cx="14.5" cy="7.5" r="1" /><circle cx="17" cy="11" r="1" /></svg>
+        </span>
+        <span class="nav-label">Theme</span>
+    </button>
+    <section id="theme-menu-options"
+         class="theme-menu-panel"
+         aria-label="Choose a color theme"
+         aria-hidden="@(!menuOpen)"
+         inert="@(!menuOpen)">
+    <div class="theme-menu-heading">Color theme</div>
+    <ThemePicker SelectedTheme="@Session.Theme"
+                 Disabled="@saving"
+                 OnThemeSelected="ChangeThemeAsync" />
+    @if (!string.IsNullOrEmpty(themeMessage))
+        {
+            <p class="theme-message" role="status">@themeMessage</p>
+        }
+    </section>
+</div>
+
+@code {
+    private bool menuOpen;
+    private bool saving;
+    private string? themeMessage;
+    protected override void OnInitialized() => Session.Changed += OnSessionChanged;
+
+    private void OnSessionChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Session.Changed -= OnSessionChanged;
+
+    private void ToggleMenu() => menuOpen = !menuOpen;
+    private void CloseMenu() => menuOpen = false;
+
+    private void HandleMenuKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+            menuOpen = false;
+    }
+
+    private async Task ChangeThemeAsync(string theme)
+    {
+        if (!AppThemes.IsSupported(theme) || saving)
+            return;
+
+        saving = true;
+        themeMessage = null;
+        try
+        {
+            Session.SetTheme(theme);
+            await Js.InvokeVoidAsync("streamlinkTheme.set", theme);
+            menuOpen = false;
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "Could not apply or cache the selected theme in the browser.");
+            themeMessage = "The theme changed, but could not be saved in this browser.";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

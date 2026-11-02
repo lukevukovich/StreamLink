@@ -1,0 +1,25 @@
+<div class="theme-picker" role="group" aria-label="Choose a color theme">
+    @foreach (var theme in AppThemes.All)
+    {
+        <button type="button"
+                class="theme-option"
+                aria-pressed="@(SelectedTheme == theme.Id)"
+                disabled="@Disabled"
+                @onclick="() => OnThemeSelected.InvokeAsync(theme.Id)">
+            <span class="theme-preview"
+                  style="@($"--swatch-main: {theme.MainColor}; --swatch-accent: {theme.AccentColor}")"
+                  aria-hidden="true"></span>
+            <span class="theme-option-name">@theme.Name</span>
+            @if (SelectedTheme == theme.Id)
+            {
+                <span class="theme-option-check" aria-hidden="true">✓</span>
+            }
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public string SelectedTheme { get; set; } = AppThemes.Default;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<string> OnThemeSelected { get; set; }
+}

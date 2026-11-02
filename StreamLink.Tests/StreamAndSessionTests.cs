@@ -103,6 +103,13 @@ public class StreamAndSessionTests
 public class ThemePreferenceTests
 {
     [Fact]
+    public void AvailableThemes_StartsWithGreen()
+    {
+        Assert.Equal(AppThemes.Default, AppThemes.All[0].Id);
+        Assert.Equal("Green", AppThemes.All[0].Name);
+    }
+
+    [Fact]
     public async Task Migrations_CreateSchemaForANewDatabase()
     {
         var database = Path.Combine(Path.GetTempPath(), $"streamlink-empty-migration-tests-{Guid.NewGuid():N}.db");
@@ -193,7 +200,7 @@ public class ThemePreferenceTests
             await preferences.SaveThemeAsync("account-two", "red");
             await preferences.SaveThemeAsync("account-one", "light");
             await preferences.SaveThemeAsync("account-two", "dark");
-            foreach (var theme in new[] { "night-light", "ocean", "ember", "graphite", "jack-o-lantern", "orchid", "lemonade", "patriot" })
+            foreach (var theme in AppThemes.All.Select(option => option.Id))
             {
                 await preferences.SaveThemeAsync("account-three", theme);
                 Assert.Equal(theme, await preferences.GetThemeAsync("account-three"));
@@ -227,6 +234,12 @@ public class ThemePreferenceTests
         state.Clear();
         Assert.Equal(AppThemes.Default, state.Theme);
         Assert.Equal(3, changeNotifications);
+
+        state.SetTheme("blue");
+        state.Clear("patriot");
+        Assert.Equal("patriot", state.Theme);
+        state.Clear("unknown");
+        Assert.Equal(AppThemes.Default, state.Theme);
     }
 }
 
