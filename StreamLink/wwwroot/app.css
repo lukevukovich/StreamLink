@@ -107,6 +107,168 @@ html[data-theme="light"] {
   --live-rgb: var(--accent-rgb);
   --line: rgb(var(--accent-rgb) / 0.23);
 }
+html[data-theme="night-light"] {
+  --bg: #f2efe9;
+  --bg-rgb: 242 239 233;
+  --page-bg: #ebe7df;
+  --surface: #faf8f3;
+  --surface-rgb: 250 248 243;
+  --surface-2: #e7e2d9;
+  --surface-2-rgb: 231 226 217;
+  --mint: #687d6b;
+  --brand-accent: #5b725f;
+  --accent-rgb: 104 125 107;
+  --teal: #778a7b;
+  --teal-rgb: 119 138 123;
+  --cream: #292b27;
+  --muted: #62675f;
+  --on-accent: #ffffff;
+  --live: #3e805e;
+  --live-rgb: 62 128 94;
+  --line: rgb(var(--accent-rgb) / 0.2);
+}
+html[data-theme="ocean"] {
+  --bg: #071b24;
+  --bg-rgb: 7 27 36;
+  --surface: #0d2934;
+  --surface-rgb: 13 41 52;
+  --surface-2: #143844;
+  --surface-2-rgb: 20 56 68;
+  --mint: #68d4cf;
+  --accent-rgb: 104 212 207;
+  --teal: #398f96;
+  --teal-rgb: 57 143 150;
+  --cream: #e2f5f3;
+  --muted: #91b9bb;
+  --live: #70d6a3;
+  --live-rgb: 112 214 163;
+}
+html[data-theme="ember"] {
+  --bg: #19130f;
+  --bg-rgb: 25 19 15;
+  --surface: #282019;
+  --surface-rgb: 40 32 25;
+  --surface-2: #392b20;
+  --surface-2-rgb: 57 43 32;
+  --mint: #f2b66d;
+  --accent-rgb: 242 182 109;
+  --teal: #ba7847;
+  --teal-rgb: 186 120 71;
+  --cream: #f8ead8;
+  --muted: #b7a18a;
+  --live: #88c995;
+  --live-rgb: 136 201 149;
+}
+html[data-theme="sakura"] {
+  --bg: #f8f2ff;
+  --bg-rgb: 248 242 255;
+  --page-bg: #f1e8fa;
+  --surface: #fdfaff;
+  --surface-rgb: 253 250 255;
+  --surface-2: #eee3f5;
+  --surface-2-rgb: 238 227 245;
+  --mint: #8e4a78;
+  --brand-accent: #814061;
+  --accent-rgb: 142 74 120;
+  --teal: #aa7294;
+  --teal-rgb: 170 114 148;
+  --cream: #382733;
+  --muted: #725d71;
+  --on-accent: #ffffff;
+  --live: #47805d;
+  --live-rgb: 71 128 93;
+  --line: rgb(var(--accent-rgb) / 0.2);
+}
+html[data-theme="graphite"] {
+  --bg: #202328;
+  --bg-rgb: 32 35 40;
+  --surface: #2b3037;
+  --surface-rgb: 43 48 55;
+  --surface-2: #3a424c;
+  --surface-2-rgb: 58 66 76;
+  --mint: #aebdcd;
+  --brand-accent: var(--mint);
+  --accent-rgb: 174 189 205;
+  --teal: #728397;
+  --teal-rgb: 114 131 151;
+  --cream: #f0f3f6;
+  --muted: #aab4bf;
+  --live: #7ed39c;
+  --live-rgb: 126 211 156;
+}
+html[data-theme="jack-o-lantern"] {
+  --bg: #15151b;
+  --bg-rgb: 21 21 27;
+  --surface: #22212a;
+  --surface-rgb: 34 33 42;
+  --surface-2: #302d39;
+  --surface-2-rgb: 48 45 57;
+  --mint: #ff7417;
+  --brand-accent: var(--mint);
+  --accent-rgb: 255 116 23;
+  --teal: #bb4f20;
+  --teal-rgb: 187 79 32;
+  --cream: #fff1e5;
+  --muted: #c0a99b;
+  --live: #8bd19b;
+  --live-rgb: 139 209 155;
+}
+html[data-theme="orchid"] {
+  --bg: #24101f;
+  --bg-rgb: 36 16 31;
+  --surface: #35182f;
+  --surface-rgb: 53 24 47;
+  --surface-2: #4a2141;
+  --surface-2-rgb: 74 33 65;
+  --mint: #ff69c7;
+  --brand-accent: var(--mint);
+  --accent-rgb: 255 105 199;
+  --teal: #b7448c;
+  --teal-rgb: 183 68 140;
+  --cream: #ffedf8;
+  --muted: #c8a9bd;
+  --live: #8bd3a4;
+  --live-rgb: 139 211 164;
+}
+html[data-theme="lemonade"] {
+  --bg: #fff8cc;
+  --bg-rgb: 255 248 204;
+  --page-bg: #fff3bd;
+  --surface: #fffdf1;
+  --surface-rgb: 255 253 241;
+  --surface-2: #f7ebc7;
+  --surface-2-rgb: 247 235 199;
+  --mint: #d94f91;
+  --brand-accent: #bd3477;
+  --accent-rgb: 217 79 145;
+  --teal: #7650a8;
+  --teal-rgb: 118 80 168;
+  --cream: #382631;
+  --muted: #755c6d;
+  --live: #36794d;
+  --live-rgb: 54 121 77;
+  --line: rgb(var(--accent-rgb) / 0.23);
+}
+html[data-theme="patriot"] {
+  --bg: #edf7ff;
+  --bg-rgb: 237 247 255;
+  --page-bg: #e3f2fc;
+  --surface: #ffffff;
+  --surface-rgb: 255 255 255;
+  --surface-2: #dceefa;
+  --surface-2-rgb: 220 238 250;
+  --mint: #62b4eb;
+  --brand-accent: var(--mint);
+  --accent-rgb: 98 180 235;
+  --teal: #d52a47;
+  --teal-rgb: 213 42 71;
+  --cream: #142b40;
+  --muted: #4d667c;
+  --on-accent: #10263a;
+  --live: #247748;
+  --live-rgb: 36 119 72;
+  --line: rgb(var(--accent-rgb) / 0.24);
+}
 * {
   box-sizing: border-box;
 }
@@ -146,10 +308,23 @@ body {
     ),
     var(--page-bg);
 }
-html[data-theme="light"] .page-background {
+html[data-theme="light"] .page-background,
+html[data-theme="night-light"] .page-background,
+html[data-theme="sakura"] .page-background {
   background:
     radial-gradient(circle at 100% 100%, rgb(var(--accent-rgb) / 0.04), transparent 30rem),
-    linear-gradient(180deg, #ffffff 0%, var(--page-bg) 100%);
+    linear-gradient(180deg, var(--surface) 0%, var(--page-bg) 100%);
+}
+html[data-theme="lemonade"] .page-background {
+  background:
+    radial-gradient(circle at 8% 0%, rgb(var(--teal-rgb) / 0.1), transparent 24rem),
+    radial-gradient(circle at 100% 100%, rgb(var(--accent-rgb) / 0.05), transparent 30rem),
+    linear-gradient(180deg, var(--surface) 0%, var(--page-bg) 100%);
+}
+html[data-theme="patriot"] .page-background {
+  background:
+    radial-gradient(circle at 100% 100%, rgb(var(--accent-rgb) / 0.04), transparent 30rem),
+    linear-gradient(180deg, var(--surface) 0%, var(--page-bg) 100%);
 }
 a {
   color: inherit;
@@ -891,18 +1066,54 @@ html[data-vlc-device="android"] .vlc-label-desktop {
   border-radius: 12px;
 }
 html[data-theme="light"] .danger,
+html[data-theme="night-light"] .danger,
+html[data-theme="sakura"] .danger,
+html[data-theme="lemonade"] .danger,
+html[data-theme="patriot"] .danger,
 html[data-theme="light"] .alert,
-html[data-theme="light"] .blazor-error-boundary {
+html[data-theme="night-light"] .alert,
+html[data-theme="sakura"] .alert,
+html[data-theme="lemonade"] .alert,
+html[data-theme="patriot"] .alert,
+html[data-theme="light"] .blazor-error-boundary,
+html[data-theme="night-light"] .blazor-error-boundary,
+html[data-theme="sakura"] .blazor-error-boundary,
+html[data-theme="lemonade"] .blazor-error-boundary,
+html[data-theme="patriot"] .blazor-error-boundary {
   color: #8f2626;
 }
 html[data-theme="light"] .account-logout,
-html[data-theme="light"] .logout-button {
+html[data-theme="night-light"] .account-logout,
+html[data-theme="sakura"] .account-logout,
+html[data-theme="lemonade"] .account-logout,
+html[data-theme="patriot"] .account-logout,
+html[data-theme="light"] .logout-button,
+html[data-theme="night-light"] .logout-button,
+html[data-theme="sakura"] .logout-button,
+html[data-theme="lemonade"] .logout-button,
+html[data-theme="patriot"] .logout-button {
   color: #8f2626;
 }
 html[data-theme="light"] .account-logout:hover,
+html[data-theme="night-light"] .account-logout:hover,
+html[data-theme="sakura"] .account-logout:hover,
+html[data-theme="lemonade"] .account-logout:hover,
+html[data-theme="patriot"] .account-logout:hover,
 html[data-theme="light"] .account-logout:focus-visible,
+html[data-theme="night-light"] .account-logout:focus-visible,
+html[data-theme="sakura"] .account-logout:focus-visible,
+html[data-theme="lemonade"] .account-logout:focus-visible,
+html[data-theme="patriot"] .account-logout:focus-visible,
 html[data-theme="light"] .logout-button:hover,
-html[data-theme="light"] .logout-button:focus-visible {
+html[data-theme="light"] .logout-button:focus-visible,
+html[data-theme="night-light"] .logout-button:hover,
+html[data-theme="night-light"] .logout-button:focus-visible,
+html[data-theme="sakura"] .logout-button:hover,
+html[data-theme="sakura"] .logout-button:focus-visible,
+html[data-theme="lemonade"] .logout-button:hover,
+html[data-theme="lemonade"] .logout-button:focus-visible,
+html[data-theme="patriot"] .logout-button:hover,
+html[data-theme="patriot"] .logout-button:focus-visible {
   color: #6e1616;
 }
 @media (max-width: 600px) {
