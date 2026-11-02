@@ -193,7 +193,7 @@ public class ThemePreferenceTests
             await preferences.SaveThemeAsync("account-two", "red");
             await preferences.SaveThemeAsync("account-one", "light");
             await preferences.SaveThemeAsync("account-two", "dark");
-            foreach (var theme in new[] { "night-light", "ocean", "ember", "sakura", "graphite", "jack-o-lantern", "orchid", "lemonade", "patriot" })
+            foreach (var theme in new[] { "night-light", "ocean", "ember", "graphite", "jack-o-lantern", "orchid", "lemonade", "patriot" })
             {
                 await preferences.SaveThemeAsync("account-three", theme);
                 Assert.Equal(theme, await preferences.GetThemeAsync("account-three"));
@@ -201,6 +201,7 @@ public class ThemePreferenceTests
 
             Assert.Equal("light", await preferences.GetThemeAsync("account-one"));
             Assert.Equal("dark", await preferences.GetThemeAsync("account-two"));
+            await Assert.ThrowsAsync<ArgumentException>(() => preferences.SaveThemeAsync("account-three", "sakura"));
             await Assert.ThrowsAsync<ArgumentException>(() => preferences.SaveThemeAsync("account-one", "unknown"));
         }
         finally
