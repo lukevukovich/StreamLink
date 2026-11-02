@@ -33,10 +33,10 @@ public sealed class SessionState
         Theme = theme;
     }
 
-    public void Clear()
+    public void Clear(string? theme = null)
     {
         Session = null;
-        Theme = AppThemes.Default;
+        Theme = theme is not null && AppThemes.IsSupported(theme) ? theme : AppThemes.Default;
         IsHydrated = true;
         Changed?.Invoke();
     }

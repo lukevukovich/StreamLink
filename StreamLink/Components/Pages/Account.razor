@@ -55,24 +55,8 @@ else
             <h2 id="theme-heading">Color theme</h2>
             <p class="muted">Choose a color palette for this account.</p>
         </div>
-        <div class="theme-picker" role="group" aria-label="Choose a color theme">
-            @foreach (var theme in AppThemes.All)
-            {
-                <button type="button"
-                        class="theme-option"
-                        aria-pressed="@(Session.Theme == theme.Id)"
-                        @onclick="() => ChangeThemeAsync(theme.Id)">
-                    <span class="theme-preview"
-                          style="@($"--swatch-main: {theme.MainColor}; --swatch-accent: {theme.AccentColor}")"
-                          aria-hidden="true"></span>
-                    <span class="theme-option-name">@theme.Name</span>
-                    @if (Session.Theme == theme.Id)
-                    {
-                        <span class="theme-option-check" aria-hidden="true">✓</span>
-                    }
-                </button>
-            }
-        </div>
+        <ThemePicker SelectedTheme="@Session.Theme"
+                     OnThemeSelected="ChangeThemeAsync" />
         @if (!string.IsNullOrEmpty(themeMessage))
         {
             <p class="theme-message" role="status">@themeMessage</p>
@@ -158,9 +142,8 @@ else
 
     private async Task Logout()
     {
-        Session.Clear();
+        Session.Clear(Session.Theme);
         await Js.InvokeVoidAsync("streamlinkStorage.remove", SessionPersistence.StorageKeyName);
-        await Js.InvokeVoidAsync("streamlinkTheme.set", AppThemes.Default);
         Navigation.NavigateTo("/login", replace: true);
     }
 }
