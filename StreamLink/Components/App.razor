@@ -8,12 +8,44 @@
     <title>StreamLink</title>
     <base href="/" />
     <link rel="stylesheet" href="app.css?v=32" />
-        <link rel="stylesheet" href="streamlink-overrides.css?v=3" />
+        <link rel="stylesheet" href="streamlink-overrides.css?v=4" />
     <link rel="stylesheet" href="StreamLink.styles.css" />
     <meta name="theme-color" content="#07181b" />
     <link rel="icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
     <link rel="shortcut icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
     <link rel="mask-icon" href="/streamlink-icon.svg?v=3" color="#89c0b6" />
+    <script>
+        window.streamlinkTheme = (() => {
+            const supportedThemes = ["green", "blue", "red", "purple", "dark", "light"];
+            const cacheKey = "streamlink.theme";
+            const apply = (theme) => {
+                const selectedTheme = supportedThemes.includes(theme) ? theme : "green";
+                document.documentElement.dataset.theme = selectedTheme;
+                const themeColor = document.querySelector('meta[name="theme-color"]');
+                if (themeColor) themeColor.content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+                return selectedTheme;
+            };
+
+            try {
+                const cachedTheme = sessionStorage.getItem(cacheKey);
+                if (supportedThemes.includes(cachedTheme)) apply(cachedTheme);
+            } catch (error) {
+                console.warn("Could not read the cached theme preference.", error);
+            }
+
+            return {
+                ready: () => document.getElementById("streamlink-initial-loading")?.remove(),
+                set: (theme) => {
+                    const selectedTheme = apply(theme);
+                    try {
+                        sessionStorage.setItem(cacheKey, selectedTheme);
+                    } catch (error) {
+                        console.warn("Could not cache the theme preference.", error);
+                    }
+                }
+            };
+        })();
+    </script>
     <HeadOutlet />
 </head>
 
@@ -34,14 +66,6 @@
     <script>
         window.streamlinkTitle = {
             set: (title) => { document.title = title; }
-        };
-        window.streamlinkTheme = {
-            ready: () => document.getElementById("streamlink-initial-loading")?.remove(),
-            set: (theme) => {
-                const supportedThemes = ["green", "blue", "red", "purple", "dark", "light"];
-                document.documentElement.dataset.theme = supportedThemes.includes(theme) ? theme : "green";
-                document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
-            }
         };
         window.streamlinkTime = {
             format: (utcValue) => {
