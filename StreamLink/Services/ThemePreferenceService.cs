@@ -17,7 +17,6 @@ public static class AppThemes
         new("graphite", "Graphite", "#202328", "#aebdcd"),
         new("night-light", "Night Light", "#f2efe9", "#687d6b"),
         new("lemonade", "Lemonade", "#fff8cc", "#d94f91"),
-        new("sakura", "Sakura", "#f8f2ff", "#8e4a78"),
         new("patriot", "Patriot", "#edf7ff", "#62b4eb"),
         new("blue", "Blue", "#091323", "#71aeff"),
         new("ocean", "Ocean", "#071b24", "#68d4cf"),
@@ -26,7 +25,7 @@ public static class AppThemes
         new("orchid", "Orchid", "#24101f", "#ff69c7"),
         new("red", "Red", "#1f0d11", "#f08591"),
         new("ember", "Ember", "#19130f", "#f2b66d"),
-        new("jack-o-lantern", "Jack-o'-Lantern", "#15151b", "#ff7417")
+        new("jack-o-lantern", "Jack-o'-Lantern", "#09090b", "#ff7417")
     ];
 
     public static bool IsSupported(string theme)
