@@ -7,7 +7,7 @@
     <meta name="referrer" content="no-referrer" />
     <title>StreamLink</title>
     <base href="/" />
-    <link rel="stylesheet" href="app.css?v=43" />
+    <link rel="stylesheet" href="app.css?v=46" />
     <link rel="stylesheet" href="streamlink-overrides.css?v=22" />
     <link rel="stylesheet" href="StreamLink.styles.css" />
     <meta name="theme-color" content="#07181b" />
@@ -18,8 +18,10 @@
         window.streamlinkTheme = (() => {
             const supportedThemes = @((MarkupString)System.Text.Json.JsonSerializer.Serialize(AppThemes.All.Select(theme => theme.Id)));
             const cacheKey = "streamlink.theme";
+            const normalizeTheme = (theme) => theme === "jack-o-lantern" ? "halloween" : theme;
             const apply = (theme) => {
-                const selectedTheme = supportedThemes.includes(theme) ? theme : "green";
+                const normalizedTheme = normalizeTheme(theme);
+                const selectedTheme = supportedThemes.includes(normalizedTheme) ? normalizedTheme : "green";
                 document.documentElement.dataset.theme = selectedTheme;
                 const themeColor = document.querySelector('meta[name="theme-color"]');
                 if (themeColor) themeColor.content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
@@ -29,7 +31,11 @@
             const readCachedTheme = () => {
                 try {
                     const theme = localStorage.getItem(cacheKey);
-                    return supportedThemes.includes(theme) ? theme : null;
+                    const normalizedTheme = normalizeTheme(theme);
+                    if (normalizedTheme !== theme && supportedThemes.includes(normalizedTheme)) {
+                        localStorage.setItem(cacheKey, normalizedTheme);
+                    }
+                    return supportedThemes.includes(normalizedTheme) ? normalizedTheme : null;
                 } catch (error) {
                     console.warn("Could not read the saved theme preference.", error);
                     return null;
@@ -42,8 +48,9 @@
             } else {
                 try {
                     const previousTabTheme = sessionStorage.getItem(cacheKey);
-                    if (supportedThemes.includes(previousTabTheme)) {
-                        cachedTheme = previousTabTheme;
+                    const normalizedTheme = normalizeTheme(previousTabTheme);
+                    if (supportedThemes.includes(normalizedTheme)) {
+                        cachedTheme = normalizedTheme;
                         apply(cachedTheme);
                         localStorage.setItem(cacheKey, cachedTheme);
                     }

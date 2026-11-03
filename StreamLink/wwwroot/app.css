@@ -128,18 +128,18 @@ html[data-theme="night-light"] {
   --line: rgb(var(--accent-rgb) / 0.2);
 }
 html[data-theme="ocean"] {
-  --bg: #071b24;
-  --bg-rgb: 7 27 36;
-  --surface: #0d2934;
-  --surface-rgb: 13 41 52;
-  --surface-2: #143844;
-  --surface-2-rgb: 20 56 68;
-  --mint: #42dfc0;
-  --accent-rgb: 66 223 192;
-  --teal: #28a99c;
-  --teal-rgb: 40 169 156;
-  --cream: #e2f5f3;
-  --muted: #91b9bb;
+  --bg: #061f2b;
+  --bg-rgb: 6 31 43;
+  --surface: #0b2d3b;
+  --surface-rgb: 11 45 59;
+  --surface-2: #124253;
+  --surface-2-rgb: 18 66 83;
+  --mint: #00e6d0;
+  --accent-rgb: 0 230 208;
+  --teal: #00b8a9;
+  --teal-rgb: 0 184 169;
+  --cream: #e5fffb;
+  --muted: #8bcacb;
   --live: #70d6a3;
   --live-rgb: 112 214 163;
 }
@@ -176,7 +176,7 @@ html[data-theme="graphite"] {
   --live: #7ed39c;
   --live-rgb: 126 211 156;
 }
-html[data-theme="jack-o-lantern"] {
+html[data-theme="halloween"] {
   --bg: #09090b;
   --bg-rgb: 9 9 11;
   --surface: #131216;
@@ -632,8 +632,8 @@ h1 {
   box-shadow: 0 0 0 5px rgb(var(--accent-rgb) / 0.12);
 }
 .status-dot {
-  background: var(--live);
-  box-shadow: 0 0 0 5px rgb(var(--live-rgb) / 0.12);
+  background: var(--mint);
+  box-shadow: 0 0 0 5px rgb(var(--accent-rgb) / 0.12);
 }
 .count-badge {
   padding: 8px 11px;

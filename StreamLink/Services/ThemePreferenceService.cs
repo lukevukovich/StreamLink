@@ -21,14 +21,14 @@ public static class AppThemes
         new("lemonade", "Lemonade", "#fff8cc", "#d94f91"),
         new("patriot", "Patriot", "#edf7ff", "#62b4eb"),
         new("blue", "Blue", "#091323", "#71aeff"),
-        new("ocean", "Ocean", "#071b24", "#42dfc0"),
+        new("ocean", "Ocean", "#061f2b", "#00e6d0"),
         new("purple", "Purple", "#160f23", "#be97ff"),
         new("orchid", "Orchid", "#24101f", "#ff69c7"),
         new("red", "Red", "#1f0d11", "#f08591"),
         new("rose-quartz", "Rose Quartz", "#f7e9ed", "#a74765"),
         new("ember", "Ember", "#19130f", "#f2b66d"),
         new("royal-gold", "Royal Gold", "#171528", "#d8bd73"),
-        new("jack-o-lantern", "Jack-o'-Lantern", "#09090b", "#ff7417"),
+        new("halloween", "Halloween", "#09090b", "#ff7417"),
         new("acid-lime", "Acid Lime", "#11140b", "#c9ef4a")
     ];
 
