@@ -128,7 +128,7 @@ public class ThemePreferenceTests
                 db.ThemePreferences.Add(new ThemePreference { OwnerKey = "new-owner", Theme = "dark" });
                 await db.SaveChangesAsync();
                 Assert.Equal("dark", (await db.ThemePreferences.SingleAsync()).Theme);
-                Assert.Single(await db.Database.GetAppliedMigrationsAsync());
+                Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
             }
         }
         finally
@@ -161,6 +161,7 @@ public class ThemePreferenceTests
                     OwnerKey = "legacy-owner"
                 });
                 db.ThemePreferences.Add(new ThemePreference { OwnerKey = "legacy-owner", Theme = "blue" });
+                db.ThemePreferences.Add(new ThemePreference { OwnerKey = "halloween-owner", Theme = "jack-o-lantern" });
                 db.SaveChanges();
             }
 
@@ -170,8 +171,9 @@ public class ThemePreferenceTests
             using (var db = factory.CreateDbContext())
             {
                 Assert.Equal("Legacy Channel", (await db.ShareLinks.SingleAsync()).ChannelName);
-                Assert.Equal("blue", (await db.ThemePreferences.SingleAsync()).Theme);
-                Assert.Single(await db.Database.GetAppliedMigrationsAsync());
+                Assert.Equal("blue", (await db.ThemePreferences.SingleAsync(x => x.OwnerKey == "legacy-owner")).Theme);
+                Assert.Equal("halloween", (await db.ThemePreferences.SingleAsync(x => x.OwnerKey == "halloween-owner")).Theme);
+                Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
             }
         }
         finally
@@ -215,6 +217,13 @@ public class ThemePreferenceTests
         {
             if (File.Exists(database)) File.Delete(database);
         }
+    }
+
+    [Fact]
+    public void HalloweenTheme_ReplacesTheOldThemeId()
+    {
+        Assert.Contains(AppThemes.All, theme => theme.Id == "halloween" && theme.Name == "Halloween");
+        Assert.False(AppThemes.IsSupported("jack-o-lantern"));
     }
 
     [Fact]
