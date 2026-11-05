@@ -25,7 +25,7 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
 
     public async Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default)
     {
-        if (expirationHours is < 1 or > 24) throw new ArgumentOutOfRangeException(nameof(expirationHours), "Choose a lifetime from 1 to 24 hours.");
+        ValidateExpirationHours(expirationHours);
         await CreationGate.WaitAsync(cancellationToken);
         try
         {
@@ -61,6 +61,28 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
 
     public async Task<IReadOnlyList<ShareLink>> GetActiveAsync(string ownerKey, CancellationToken cancellationToken = default)
     { await using var db = await dbFactory.CreateDbContextAsync(cancellationToken); return await db.ShareLinks.Where(x => x.OwnerKey == ownerKey && !x.Revoked && x.ExpiresUtc > DateTime.UtcNow).OrderByDescending(x => x.CreatedUtc).ToListAsync(cancellationToken); }
+    public async Task<ShareLink?> UpdateExpirationAsync(string token, string ownerKey, int expirationHours, CancellationToken cancellationToken = default)
+    {
+        ValidateExpirationHours(expirationHours);
+
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+        var link = await db.ShareLinks.SingleOrDefaultAsync(
+            x => x.Token == token && x.OwnerKey == ownerKey && !x.Revoked && x.ExpiresUtc > now,
+            cancellationToken);
+        if (link is null) return null;
+
+        link.ExpiresUtc = now.AddHours(expirationHours);
+        await db.SaveChangesAsync(cancellationToken);
+        return link;
+    }
+
+    private static void ValidateExpirationHours(int expirationHours)
+    {
+        if (expirationHours is < 1 or > 24)
+            throw new ArgumentOutOfRangeException(nameof(expirationHours), "Choose a lifetime from 1 to 24 hours.");
+    }
+
     public async Task<ShareLink?> GetAsync(string token, CancellationToken cancellationToken = default)
     { await using var db = await dbFactory.CreateDbContextAsync(cancellationToken); return await db.ShareLinks.SingleOrDefaultAsync(x => x.Token == token, cancellationToken); }
     public async Task<SharePlayback?> GetPlaybackAsync(string token, CancellationToken cancellationToken = default)

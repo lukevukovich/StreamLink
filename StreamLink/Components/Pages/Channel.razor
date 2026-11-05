@@ -36,22 +36,22 @@ else
                 <span class="copy-status" role="status" hidden></span>
                 <input type="text" readonly value="@shareUrl" aria-label="Share link" onclick="this.select()" />
                 <div class="share-created-actions"><button type="button" class="button small ghost" data-copy-input>Copy link</button><a class="button small ghost" href="@shareUrl">Open link →</a></div>
-                <small>Expires <time class="local-time" data-utc="@shareExpiresUtc.ToString("O")">@shareExpiresUtc.ToString("MMM d, yyyy 'at' h:mm tt 'UTC'")</time>@(reusedShare ? " · Existing share reused" : "")</small>
+                <small>Expires <time class="local-time" data-utc="@shareExpiresUtc.ToString("O")">@ShareTime.Utc(shareExpiresUtc)</time>@(reusedShare ? " · Existing share reused" : "")</small>
             </div>
         }
         else if (showShareForm)
         {
             <div id="share-settings" class="share-form">
-                <label for="share-hours">Link lifetime</label>
+                <label for="create-share-lifetime">Link lifetime</label>
                 <div class="share-form-controls">
-                    <select id="share-hours" class="search" @bind="shareHours" disabled="@shareBusy">
-                        <option value="1">1 hour</option><option value="2">2 hours</option><option value="4">4 hours</option>
-                        <option value="8">8 hours</option><option value="12">12 hours</option><option value="24">24 hours</option>
-                    </select>
+                    <ShareLifetimePicker Id="create-share-lifetime" CssClass="channel-share-lifetime" ShowLabel="false" @bind-Hours="shareHours" Disabled="@shareBusy" />
                     <button type="button" class="button primary" disabled="@shareBusy" @onclick="CreateShare">@(shareBusy ? "Creating…" : "Share")</button>
                     <button type="button" class="button ghost" disabled="@shareBusy" @onclick="CancelShare">Cancel</button>
                 </div>
-                <p class="muted share-form-note">An existing active link for this channel keeps its original expiry.</p>
+                @{
+                    var previewUtc = DateTime.UtcNow.AddHours(shareHours);
+                    <p class="share-form-note">Expires <time class="local-time" data-utc="@previewUtc.ToString("O")">@ShareTime.Utc(previewUtc)</time></p>
+                }
                 @if (!string.IsNullOrWhiteSpace(shareError)) { <div class="alert" role="alert">@shareError</div> }
             </div>
         }
@@ -76,7 +76,7 @@ else
             Navigation.NavigateTo($"/channel/{StreamId}", replace: true);
             return;
         }
-        if (shareUrl is not null) await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".share-created .local-time");
+        if (shareUrl is not null || showShareForm) await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".share-panel .local-time");
     }
     protected override async Task OnParametersSetAsync()
     {

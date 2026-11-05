@@ -46,7 +46,7 @@ else
         </div>
         <div class="account-details">
             <span>Expires</span>
-            <strong><time datetime="@(Session.Session.UserInfo.Expiration?.ToString("O"))">@(formattedExpiration ?? Session.Session.UserInfo.Expiration?.ToString("MMM d, yyyy 'at' h:mm tt 'UTC'") ?? "Not provided")</time></strong>
+            <strong><time datetime="@(Session.Session.UserInfo.Expiration?.ToString("O"))">@(formattedExpiration ?? (Session.Session.UserInfo.Expiration is { } accountExpiration ? ShareTime.Utc(accountExpiration.UtcDateTime) : "Not provided"))</time></strong>
             <span>Trial</span><strong>@(Session.Session.UserInfo.IsTrial == "1" ? "Yes" : "No")</strong>
         </div>
     </section>

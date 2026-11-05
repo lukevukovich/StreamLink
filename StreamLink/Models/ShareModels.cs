@@ -18,6 +18,7 @@ public sealed class ThemePreference
 {
     public string OwnerKey { get; set; } = "";
     public string Theme { get; set; } = "green";
+    public string ShareSort { get; set; } = "newest";
 }
 
 public sealed record SharePlayback(ShareLink Link, string StreamUrl);

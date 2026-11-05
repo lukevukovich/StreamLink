@@ -7,7 +7,7 @@
     <meta name="referrer" content="no-referrer" />
     <title>StreamLink</title>
     <base href="/" />
-    <link rel="stylesheet" href="app.css?v=46" />
+    <link rel="stylesheet" href="app.css?v=54" />
     <link rel="stylesheet" href="streamlink-overrides.css?v=22" />
     <link rel="stylesheet" href="StreamLink.styles.css" />
     <meta name="theme-color" content="#07181b" />
@@ -95,17 +95,68 @@
             set: (title) => { document.title = title; }
         };
         window.streamlinkTime = {
+            formatRemaining: (element) => {
+                const expires = new Date(element.dataset.utc);
+                if (Number.isNaN(expires.getTime())) return;
+                const remainingMs = expires.getTime() - Date.now();
+                if (remainingMs <= 0) {
+                    element.textContent = "Expired";
+                    return;
+                }
+                const minutes = Math.ceil(remainingMs / 60000);
+                const suffix = element.classList.contains("share-time-remaining") ? "" : " remaining";
+                if (minutes < 60) {
+                    element.textContent = `${minutes}m${suffix}`;
+                    return;
+                }
+                const hours = Math.floor(minutes / 60);
+                const remainingMinutes = minutes % 60;
+                if (hours < 24) {
+                    element.textContent = remainingMinutes === 0
+                        ? `${hours}h${suffix}`
+                        : `${hours}h ${remainingMinutes}m${suffix}`;
+                    return;
+                }
+                const days = Math.floor(minutes / 1440);
+                const remainingHours = Math.floor((minutes % 1440) / 60);
+                const minutesAfterHours = minutes % 60;
+                const dayLabel = days === 1 ? "day" : "days";
+                if (remainingHours === 0) {
+                    element.textContent = minutesAfterHours === 0
+                        ? `${days} ${dayLabel}${suffix}`
+                        : `${days} ${dayLabel} ${minutesAfterHours}m${suffix}`;
+                } else {
+                    element.textContent = minutesAfterHours === 0
+                        ? `${days} ${dayLabel} ${remainingHours}h${suffix}`
+                        : `${days} ${dayLabel} ${remainingHours}h ${minutesAfterHours}m${suffix}`;
+                }
+            },
             format: (utcValue) => {
                 const date = new Date(utcValue);
                 if (Number.isNaN(date.getTime())) return "";
-                const options = { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" };
-                return new Intl.DateTimeFormat(undefined, options).format(date);
+                const time = new Intl.DateTimeFormat(undefined, {
+                    hour: "numeric", minute: "2-digit", timeZoneName: "short"
+                }).format(date);
+                const dateOptions = { month: "short", day: "numeric" };
+                if (date.getFullYear() !== new Date().getFullYear()) dateOptions.year = "numeric";
+                const formattedDate = new Intl.DateTimeFormat(undefined, dateOptions).format(date);
+                return `${time}, ${formattedDate}`;
             },
             formatElements: (selector) => {
                 document.querySelectorAll(selector).forEach((element) => {
-                    const local = window.streamlinkTime.format(element.dataset.utc);
-                    if (local) element.textContent = local;
+                    if (element.classList.contains("time-remaining")) {
+                        window.streamlinkTime.formatRemaining(element);
+                    } else {
+                        const local = window.streamlinkTime.format(element.dataset.utc);
+                        if (local) element.textContent = local;
+                    }
                 });
+                if (!window.streamlinkTime.remainingTimerStarted) {
+                    window.streamlinkTime.remainingTimerStarted = true;
+                    window.setInterval(() => {
+                        document.querySelectorAll(".time-remaining").forEach(window.streamlinkTime.formatRemaining);
+                    }, 30000);
+                }
             }
         };
     </script>

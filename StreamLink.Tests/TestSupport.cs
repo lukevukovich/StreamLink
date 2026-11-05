@@ -75,6 +75,7 @@ internal sealed class StubShares : IShareLinkService
 
     public Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task<IReadOnlyList<ShareLink>> GetActiveAsync(string ownerKey, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public Task<ShareLink?> UpdateExpirationAsync(string token, string ownerKey, int expirationHours, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task<ShareLink?> GetAsync(string token, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task RevokeAsync(string token, string ownerKey, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }

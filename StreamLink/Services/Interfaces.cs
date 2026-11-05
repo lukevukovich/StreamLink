@@ -19,6 +19,7 @@ public interface IShareLinkService
 {
     Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ShareLink>> GetActiveAsync(string ownerKey, CancellationToken cancellationToken = default);
+    Task<ShareLink?> UpdateExpirationAsync(string token, string ownerKey, int expirationHours, CancellationToken cancellationToken = default);
     Task<ShareLink?> GetAsync(string token, CancellationToken cancellationToken = default);
     Task<SharePlayback?> GetPlaybackAsync(string token, CancellationToken cancellationToken = default);
     Task RevokeAsync(string token, string ownerKey, CancellationToken cancellationToken = default);

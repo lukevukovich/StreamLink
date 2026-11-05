@@ -1,0 +1,40 @@
+@using System.Globalization
+
+<div class="select-field @CssClass">
+    @if (ShowLabel) { <label for="@Id">Link lifetime</label> }
+    <select id="@Id" class="select-control" aria-label="Link lifetime" value="@selectedValue" @onchange="ChangePreset" disabled="@Disabled">
+        <option value="1">1 hour</option>
+        <option value="2">2 hours</option>
+        <option value="4">4 hours</option>
+        <option value="8">8 hours</option>
+        <option value="12">12 hours</option>
+        <option value="24">24 hours</option>
+    </select>
+</div>
+
+@code {
+    private static readonly int[] PresetHours = [1, 2, 4, 8, 12, 24];
+    private string selectedValue = "4";
+
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter] public int Hours { get; set; } = 4;
+    [Parameter] public EventCallback<int> HoursChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ShowLabel { get; set; } = true;
+    [Parameter] public string CssClass { get; set; } = "";
+
+    protected override void OnParametersSet()
+    {
+        selectedValue = PresetHours.Contains(Hours) ? Hours.ToString(CultureInfo.InvariantCulture) : "4";
+    }
+
+    private async Task ChangePreset(ChangeEventArgs args)
+    {
+        selectedValue = args.Value?.ToString() ?? "";
+        if (int.TryParse(selectedValue, NumberStyles.None, CultureInfo.InvariantCulture, out var hours) &&
+            PresetHours.Contains(hours))
+        {
+            await HoursChanged.InvokeAsync(hours);
+        }
+    }
+}
