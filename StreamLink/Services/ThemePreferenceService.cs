@@ -6,6 +6,36 @@ namespace StreamLink.Services;
 
 public sealed record AppTheme(string Id, string Name, string MainColor, string AccentColor);
 
+public sealed record ShareSortOption(string Id, string Name);
+
+public static class ShareSortOptions
+{
+    public const string Expiring = "expiring";
+    public const string Latest = "latest";
+    public const string Newest = "newest";
+    public const string Oldest = "oldest";
+    public const string Channel = "channel";
+    public const string ChannelDescending = "channel-desc";
+    public const string Category = "category";
+    public const string CategoryDescending = "category-desc";
+    public const string Default = Newest;
+
+    public static IReadOnlyList<ShareSortOption> All { get; } =
+    [
+        new(Expiring, "Soonest to expire"),
+        new(Latest, "Latest to expire"),
+        new(Newest, "Recently created"),
+        new(Oldest, "Oldest created"),
+        new(Channel, "Channel A-Z"),
+        new(ChannelDescending, "Channel Z-A"),
+        new(Category, "Category A-Z"),
+        new(CategoryDescending, "Category Z-A")
+    ];
+
+    public static bool IsSupported(string value) =>
+        All.Any(option => string.Equals(option.Id, value, StringComparison.Ordinal));
+}
+
 public static class AppThemes
 {
     public const string Default = "green";
@@ -61,6 +91,33 @@ public sealed class ThemePreferenceService(IDbContextFactory<StreamLinkDbContext
             db.ThemePreferences.Add(new ThemePreference { OwnerKey = ownerKey, Theme = theme });
         else
             preference.Theme = theme;
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<string> GetShareSortAsync(string ownerKey, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var preference = await db.ThemePreferences
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.OwnerKey == ownerKey, cancellationToken);
+        return preference is not null && ShareSortOptions.IsSupported(preference.ShareSort)
+            ? preference.ShareSort
+            : ShareSortOptions.Default;
+    }
+
+    public async Task SaveShareSortAsync(string ownerKey, string sort, CancellationToken cancellationToken = default)
+    {
+        if (!ShareSortOptions.IsSupported(sort))
+            throw new ArgumentException("The selected share sort order is not supported.", nameof(sort));
+
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var preference = await db.ThemePreferences
+            .SingleOrDefaultAsync(x => x.OwnerKey == ownerKey, cancellationToken);
+        if (preference is null)
+            db.ThemePreferences.Add(new ThemePreference { OwnerKey = ownerKey, ShareSort = sort });
+        else
+            preference.ShareSort = sort;
 
         await db.SaveChangesAsync(cancellationToken);
     }

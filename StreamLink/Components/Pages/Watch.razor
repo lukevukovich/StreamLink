@@ -22,7 +22,7 @@
 	else if (state == "expired") { <h1>Link expired</h1><p class="muted">This share link has passed its expiration time.</p> }
 	else if (playback is not null)
 	{
-		<section class="detail-hero"><div><div class="eyebrow">OPEN A STREAM</div><h1>@playback.Link.ChannelName</h1><p class="muted detail-subtitle"><span class="live-dot">LIVE</span><span>@playback.Link.CategoryName</span></p><p class="share-expiry">Share expires <time class="local-time" datetime="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")" data-utc="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")">@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("MMM d, yyyy 'at' h:mm tt 'UTC'")</time></p></div></section>
+		<section class="detail-hero"><div><div class="eyebrow">OPEN A STREAM</div><h1>@playback.Link.ChannelName</h1><p class="muted detail-subtitle"><span class="live-dot">LIVE</span><span>@playback.Link.CategoryName</span></p><p class="share-expiry"><span>Expires</span><time class="local-time" datetime="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")" data-utc="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")">@ShareTime.Utc(playback.Link.ExpiresUtc)</time><time class="remaining-tag time-remaining share-time-remaining" data-utc="@DateTime.SpecifyKind(playback.Link.ExpiresUtc, DateTimeKind.Utc).ToString("O")">@ShareTime.Remaining(playback.Link.ExpiresUtc, includeSuffix: false)</time></p></div></section>
 		<ExternalStreamActions Grant="@externalGrant" ChannelName="@playback.Link.ChannelName" />
 	}
 	else { <h1>Link unavailable</h1><p class="muted">The stream URL could not be restored. Create a new share link from the channel page.</p> }
@@ -37,7 +37,7 @@
 	private string? loadedToken;
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
-		if (playback is not null) await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".local-time");
+		if (playback is not null) await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".local-time, .time-remaining");
 	}
 	private void OpenShare()
 	{

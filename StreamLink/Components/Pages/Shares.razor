@@ -2,20 +2,174 @@
 @rendermode InteractiveServer
 @inject SessionState Session
 @inject IShareLinkService ShareService
+@inject ThemePreferenceService Preferences
 @inject NavigationManager Navigation
 @inject IJSRuntime Js
+@inject ILogger<Shares> Logger
 
 <DocumentTitle Title="Shares · StreamLink" />
 @if (Session.Session is null) { <RedirectToLogin /> }
 else
 {
     <div class="page-heading"><div><div class="eyebrow">YOUR LINKS</div><h1>Active shares.</h1></div><span class="count-badge">@links.Count active</span></div>
+    <div class="share-toolbar">
+        <div class="select-field">
+            <label for="share-sort">Sort by</label>
+            <select id="share-sort" class="select-control" value="@shareSort" @onchange="ChangeSort">
+                @foreach (var option in ShareSortOptions.All)
+                {
+                    <option value="@option.Id">@option.Name</option>
+                }
+            </select>
+        </div>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(pageMessage)) { <p class="share-page-message" role="status">@pageMessage</p> }
     @if (links.Count == 0) { <div class="empty-card">You haven't created any active share links yet. Open a channel and tap Share.</div> }
-    else { <div class="share-list">@foreach (var link in links) { var url = Navigation.ToAbsoluteUri($"/watch/{link.Token}").ToString(); var expiresUtc = DateTime.SpecifyKind(link.ExpiresUtc, DateTimeKind.Utc); <article class="share-item"><div><strong>@link.ChannelName</strong><small>@link.CategoryName · expires <time class="local-time" data-utc="@expiresUtc.ToString("O")">@expiresUtc.ToString("MMM d, yyyy 'at' h:mm tt 'UTC'")</time></small><span class="copy-status" role="status" hidden></span><input class="copy-select" type="text" readonly hidden aria-label="Share link for manual copying" /></div><div class="share-item-actions"><button type="button" class="button small ghost" data-copy-url="@url">Copy</button><a class="button small ghost" href="/watch/@link.Token">Open</a><button class="button small danger" @onclick="() => Revoke(link.Token)">Revoke</button></div></article> }</div> }
+    else
+    {
+        <div class="share-list">
+            @foreach (var link in SortedLinks)
+            {
+                var url = Navigation.ToAbsoluteUri($"/watch/{link.Token}").ToString();
+                var expiresUtc = DateTime.SpecifyKind(link.ExpiresUtc, DateTimeKind.Utc);
+                <article class="share-item" @key="link.Token">
+                    <div class="share-item-details">
+                        <div class="share-card-heading">
+                            <strong class="share-card-title">@link.ChannelName</strong>
+                            <span class="share-card-category">@link.CategoryName</span>
+                        </div>
+                        <p class="share-expiry share-item-expiry">
+                            <span>Expires</span>
+                            <time class="local-time" data-utc="@expiresUtc.ToString("O")">@ShareTime.Utc(expiresUtc)</time>
+                            <time class="remaining-tag time-remaining share-time-remaining" data-utc="@expiresUtc.ToString("O")">@ShareTime.Remaining(expiresUtc, includeSuffix: false)</time>
+                        </p>
+                        <span class="copy-status" role="status" hidden></span>
+                        <input class="copy-select" type="text" readonly hidden aria-label="Share link for manual copying" />
+                    </div>
+                    @if (editingToken == link.Token)
+                    {
+                        <div class="share-edit-controls">
+                            <ShareLifetimePicker Id="@($"edit-share-lifetime-{link.Token}")" ShowLabel="false" @bind-Hours="updateHours" Disabled="@(updatingToken is not null)" />
+                            <button type="button" class="button small primary" disabled="@(updatingToken is not null)" @onclick="() => UpdateExpiration(link.Token)">@(updatingToken == link.Token ? "Saving…" : "Save")</button>
+                            <button type="button" class="button small ghost" disabled="@(updatingToken is not null)" @onclick="CancelUpdate">Cancel</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="share-item-actions">
+                            <button type="button" class="button small ghost" data-copy-url="@url">Copy</button>
+                            <a class="button small ghost" href="/watch/@link.Token">Open</a>
+                            <button type="button" class="button small ghost" disabled="@(updatingToken is not null)" @onclick="() => BeginUpdate(link)">Edit</button>
+                            <button type="button" class="button small danger" disabled="@(updatingToken is not null)" @onclick="() => Revoke(link.Token)">Revoke</button>
+                        </div>
+                    }
+                </article>
+            }
+        </div>
+    }
 }
 @code {
     private IReadOnlyList<ShareLink> links = [];
-    protected override async Task OnInitializedAsync() { if (Session.Session is not null) links = await ShareService.GetActiveAsync(Session.OwnerKey); }
-    protected override async Task OnAfterRenderAsync(bool firstRender) => await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".local-time");
-    private async Task Revoke(string token) { await ShareService.RevokeAsync(token, Session.OwnerKey); links = await ShareService.GetActiveAsync(Session.OwnerKey); }
+    private string shareSort = ShareSortOptions.Default;
+    private string? editingToken;
+    private string? updatingToken;
+    private int updateHours = 4;
+    private string? pageMessage;
+
+    private IEnumerable<ShareLink> SortedLinks => shareSort switch
+    {
+        ShareSortOptions.Newest => links.OrderByDescending(link => link.CreatedUtc),
+        ShareSortOptions.Oldest => links.OrderBy(link => link.CreatedUtc),
+        ShareSortOptions.Latest => links.OrderByDescending(link => link.ExpiresUtc)
+            .ThenByDescending(link => link.CreatedUtc),
+        ShareSortOptions.Channel => links.OrderBy(link => link.ChannelName, StringComparer.OrdinalIgnoreCase)
+            .ThenByDescending(link => link.CreatedUtc),
+        ShareSortOptions.ChannelDescending => links.OrderByDescending(link => link.ChannelName, StringComparer.OrdinalIgnoreCase)
+            .ThenByDescending(link => link.CreatedUtc),
+        ShareSortOptions.Category => links.OrderBy(link => link.CategoryName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(link => link.ChannelName, StringComparer.OrdinalIgnoreCase)
+            .ThenByDescending(link => link.CreatedUtc),
+        ShareSortOptions.CategoryDescending => links.OrderByDescending(link => link.CategoryName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(link => link.ChannelName, StringComparer.OrdinalIgnoreCase)
+            .ThenByDescending(link => link.CreatedUtc),
+        _ => links.OrderBy(link => link.ExpiresUtc)
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.Session is null) return;
+        shareSort = await Preferences.GetShareSortAsync(Session.OwnerKey);
+        await ReloadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) =>
+        await Js.InvokeVoidAsync("streamlinkTime.formatElements", ".local-time, .time-remaining");
+
+    private async Task ChangeSort(ChangeEventArgs args)
+    {
+        var selected = args.Value?.ToString();
+        if (selected is null || !ShareSortOptions.IsSupported(selected)) return;
+
+        var previous = shareSort;
+        shareSort = selected;
+        pageMessage = null;
+        try
+        {
+            await Preferences.SaveShareSortAsync(Session.OwnerKey, shareSort);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Could not save the share sort preference.");
+            shareSort = previous;
+            pageMessage = "The sort preference could not be saved. Please try again.";
+        }
+    }
+
+    private void BeginUpdate(ShareLink link)
+    {
+        updateHours = Math.Clamp((int)Math.Ceiling((link.ExpiresUtc - DateTime.UtcNow).TotalHours), 1, 24);
+        editingToken = link.Token;
+        pageMessage = null;
+    }
+
+    private void CancelUpdate()
+    {
+        if (updatingToken is not null) return;
+        editingToken = null;
+    }
+
+    private async Task UpdateExpiration(string token)
+    {
+        if (updatingToken is not null || editingToken != token) return;
+
+        updatingToken = token;
+        pageMessage = null;
+        try
+        {
+            var updated = await ShareService.UpdateExpirationAsync(token, Session.OwnerKey, updateHours);
+            await ReloadAsync();
+            editingToken = null;
+            if (updated is null) pageMessage = "This share expired or is no longer available, so its expiration could not be changed.";
+            else pageMessage = "Expiration updated. The share code has not changed.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Could not update expiration for share {ShareToken}.", token);
+            pageMessage = "The expiration could not be updated. Please try again.";
+        }
+        finally
+        {
+            updatingToken = null;
+        }
+    }
+
+    private async Task Revoke(string token)
+    {
+        await ShareService.RevokeAsync(token, Session.OwnerKey);
+        if (editingToken == token) editingToken = null;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync() =>
+        links = await ShareService.GetActiveAsync(Session.OwnerKey);
 }

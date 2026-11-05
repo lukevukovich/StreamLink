@@ -26,6 +26,52 @@ public class ShareTests : IDisposable
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => service.CreateAsync(TestSupport.Session(), "owner", Channel(1), "News", hours));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(25)]
+    public async Task UpdateExpiration_RejectsInvalidLifetime(int hours)
+    {
+        var (service, _, _) = TestSupport.Shares(database);
+        var link = await service.CreateAsync(TestSupport.Session(), "owner", Channel(1), "News", 1);
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => service.UpdateExpirationAsync(link.Token, "owner", hours));
+    }
+
+    [Fact]
+    public async Task UpdateExpiration_ResetsLifetimeFromNowAndPreservesShareCode()
+    {
+        var (service, _, _) = TestSupport.Shares(database);
+        var link = await service.CreateAsync(TestSupport.Session(), "owner", Channel(1), "News", 1);
+        var beforeUpdate = DateTime.UtcNow;
+
+        var updated = await service.UpdateExpirationAsync(link.Token, "owner", 24);
+
+        Assert.NotNull(updated);
+        Assert.Equal(link.Token, updated.Token);
+        Assert.InRange(updated.ExpiresUtc, beforeUpdate.AddHours(24), DateTime.UtcNow.AddHours(24));
+        Assert.NotNull(await service.GetPlaybackAsync(link.Token));
+    }
+
+    [Fact]
+    public async Task UpdateExpiration_RequiresAnActiveShareOwnedByCaller()
+    {
+        var (service, factory, _) = TestSupport.Shares(database);
+        var expired = await service.CreateAsync(TestSupport.Session(), "owner", Channel(1), "News", 1);
+        var revoked = await service.CreateAsync(TestSupport.Session(), "owner", Channel(2), "News", 1);
+        var live = await service.CreateAsync(TestSupport.Session(), "owner", Channel(3), "News", 1);
+        await service.RevokeAsync(revoked.Token, "owner");
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            var row = await db.ShareLinks.SingleAsync(x => x.Token == expired.Token);
+            row.ExpiresUtc = DateTime.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Null(await service.UpdateExpirationAsync(live.Token, "other-owner", 4));
+        Assert.Null(await service.UpdateExpirationAsync(expired.Token, "owner", 4));
+        Assert.Null(await service.UpdateExpirationAsync(revoked.Token, "owner", 4));
+        Assert.NotNull(await service.UpdateExpirationAsync(live.Token, "owner", 4));
+    }
+
     [Fact]
     public async Task Create_ProtectsSourceAndReusesLiveShareEvenUnderConcurrency()
     {

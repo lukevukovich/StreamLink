@@ -70,6 +70,11 @@ namespace StreamLink.Data.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ShareSort")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Theme")
                         .IsRequired()
                         .HasMaxLength(16)

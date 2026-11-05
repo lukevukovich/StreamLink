@@ -128,7 +128,8 @@ public class ThemePreferenceTests
                 db.ThemePreferences.Add(new ThemePreference { OwnerKey = "new-owner", Theme = "dark" });
                 await db.SaveChangesAsync();
                 Assert.Equal("dark", (await db.ThemePreferences.SingleAsync()).Theme);
-                Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
+                Assert.Equal(ShareSortOptions.Default, (await db.ThemePreferences.SingleAsync()).ShareSort);
+                Assert.Equal(5, (await db.Database.GetAppliedMigrationsAsync()).Count());
             }
         }
         finally
@@ -157,23 +158,32 @@ public class ThemePreferenceTests
                     CategoryName = "Legacy Category",
                     StreamId = 7,
                     CreatedUtc = DateTime.UtcNow,
-                    ExpiresUtc = DateTime.UtcNow.AddHours(1),
+                    ExpiresUtc = DateTime.MaxValue,
                     OwnerKey = "legacy-owner"
                 });
                 db.ThemePreferences.Add(new ThemePreference { OwnerKey = "legacy-owner", Theme = "blue" });
                 db.ThemePreferences.Add(new ThemePreference { OwnerKey = "halloween-owner", Theme = "jack-o-lantern" });
                 db.SaveChanges();
+                db.Database.ExecuteSqlRaw("""ALTER TABLE "ThemePreferences" DROP COLUMN "ShareSort";""");
             }
 
             using (var db = factory.CreateDbContext())
                 await db.Database.MigrateAsync();
 
+            var migrationTime = DateTime.UtcNow;
             using (var db = factory.CreateDbContext())
             {
-                Assert.Equal("Legacy Channel", (await db.ShareLinks.SingleAsync()).ChannelName);
+                var legacyShare = await db.ShareLinks.SingleAsync();
+                Assert.Equal("Legacy Channel", legacyShare.ChannelName);
+                Assert.InRange(
+                    legacyShare.ExpiresUtc,
+                    migrationTime.AddHours(24).AddSeconds(-2),
+                    DateTime.UtcNow.AddHours(24).AddSeconds(2));
                 Assert.Equal("blue", (await db.ThemePreferences.SingleAsync(x => x.OwnerKey == "legacy-owner")).Theme);
                 Assert.Equal("halloween", (await db.ThemePreferences.SingleAsync(x => x.OwnerKey == "halloween-owner")).Theme);
-                Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
+                Assert.Equal(ShareSortOptions.Default, (await db.ThemePreferences.SingleAsync(x => x.OwnerKey == "legacy-owner")).ShareSort);
+                Assert.Equal(ShareSortOptions.Default, (await db.ThemePreferences.SingleAsync(x => x.OwnerKey == "halloween-owner")).ShareSort);
+                Assert.Equal(5, (await db.Database.GetAppliedMigrationsAsync()).Count());
             }
         }
         finally
@@ -210,8 +220,19 @@ public class ThemePreferenceTests
 
             Assert.Equal("light", await preferences.GetThemeAsync("account-one"));
             Assert.Equal("dark", await preferences.GetThemeAsync("account-two"));
+            Assert.Equal(ShareSortOptions.Default, await preferences.GetShareSortAsync("account-one"));
+            foreach (var sort in ShareSortOptions.All.Select(option => option.Id))
+            {
+                await preferences.SaveShareSortAsync("account-three", sort);
+                Assert.Equal(sort, await preferences.GetShareSortAsync("account-three"));
+            }
+            await preferences.SaveShareSortAsync("account-one", ShareSortOptions.Channel);
+            await preferences.SaveShareSortAsync("account-two", ShareSortOptions.Newest);
+            Assert.Equal(ShareSortOptions.Channel, await preferences.GetShareSortAsync("account-one"));
+            Assert.Equal(ShareSortOptions.Newest, await preferences.GetShareSortAsync("account-two"));
             await Assert.ThrowsAsync<ArgumentException>(() => preferences.SaveThemeAsync("account-three", "sakura"));
             await Assert.ThrowsAsync<ArgumentException>(() => preferences.SaveThemeAsync("account-one", "unknown"));
+            await Assert.ThrowsAsync<ArgumentException>(() => preferences.SaveShareSortAsync("account-one", "random"));
         }
         finally
         {
