@@ -1,5 +1,8 @@
+@using System.Data.Common
+@using Microsoft.EntityFrameworkCore
 @implements IDisposable
 @inject SessionState Session
+@inject ThemePreferenceService ThemePreferences
 @inject IJSRuntime Js
 @inject ILogger<ThemeMenu> Logger
 
@@ -70,14 +73,39 @@
         themeMessage = null;
         try
         {
+            if (Session.IsAuthenticated)
+            {
+                try
+                {
+                    await ThemePreferences.SaveThemeAsync(Session.OwnerKey, theme);
+                }
+                catch (DbUpdateException ex)
+                {
+                    Logger.LogError(ex, "Could not save the account theme preference.");
+                    themeMessage = "The theme could not be saved. Please try again.";
+                    return;
+                }
+                catch (DbException ex)
+                {
+                    Logger.LogError(ex, "Could not save the account theme preference.");
+                    themeMessage = "The theme could not be saved. Please try again.";
+                    return;
+                }
+            }
+
             Session.SetTheme(theme);
-            await Js.InvokeVoidAsync("streamlinkTheme.set", theme);
-            menuOpen = false;
-        }
-        catch (JSException ex)
-        {
-            Logger.LogWarning(ex, "Could not apply or cache the selected theme in the browser.");
-            themeMessage = "The theme changed, but could not be saved in this browser.";
+            try
+            {
+                await Js.InvokeVoidAsync("streamlinkTheme.set", theme);
+                menuOpen = false;
+            }
+            catch (JSException ex)
+            {
+                Logger.LogWarning(ex, "Could not apply or cache the selected theme in the browser.");
+                themeMessage = Session.IsAuthenticated
+                    ? "The theme was saved to your account, but could not be applied in this browser. Reload the page to apply it."
+                    : "The theme changed, but could not be saved in this browser.";
+            }
         }
         finally
         {

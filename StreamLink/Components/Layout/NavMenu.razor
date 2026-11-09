@@ -5,10 +5,7 @@
     <NavLink class="nav-pill nav-shares" href="/shares" Match="NavLinkMatch.All"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"/></svg></span><span class="nav-label">Shares</span></NavLink>
 }
 <NavLink class="nav-pill nav-watch" href="/watch" Match="NavLinkMatch.Prefix"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7"/><path d="M14 10a5 5 0 0 0-7.1 0l-3 3A5 5 0 0 0 11 20.1l1.7-1.7"/></svg></span><span class="nav-label">Watch</span></NavLink>
-@if (!IsAuthenticated)
-{
-    <ThemeMenu />
-}
+<ThemeMenu />
 <NavLink class="profile-pill" href="@(IsAuthenticated ? "/account" : "/login")" Match="NavLinkMatch.All" aria-label="@(IsAuthenticated ? "Open account" : "Sign in")"><span class="profile-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.8-3.4 3-5.1 6.5-5.1s5.7 1.7 6.5 5.1"/></svg></span></NavLink>
 
 @code {
