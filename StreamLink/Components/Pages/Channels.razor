@@ -8,7 +8,7 @@
 @if (Session.Session is null) { <RedirectToLogin /> }
 else
 {
-    <a class="back-link" href="/tv">← All categories</a><div class="page-heading compact"><div><div class="eyebrow">LIVE TELEVISION</div><h1>@CategoryName</h1><p class="muted page-intro">Pick a channel to open its stream.</p><span class="count-badge"><span class="live-dot">LIVE</span> · @filteredChannels.Count() channels</span></div></div>
+    <a class="back-link" href="/tv">← All categories</a><div class="page-heading compact"><div><div class="eyebrow">LIVE TELEVISION</div><h1>@CategoryName</h1><p class="muted page-intro">Pick a channel to open its stream.</p><span class="count-badge live-count"><span class="live-dot">LIVE</span> · @filteredChannels.Count() channels</span></div></div>
     <input class="search" placeholder="Search channels" @bind="Search" @bind:event="oninput" @bind:after="UpdateSearchUri" />
     @if (loading) { <div class="loading-card">Loading channels…</div> }
     else if (loadError is not null) { <div class="empty-card">@loadError</div> }

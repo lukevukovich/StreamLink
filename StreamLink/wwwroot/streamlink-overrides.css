@@ -113,7 +113,7 @@
 .logout-button {
   white-space: nowrap;
 }
-@media (max-width: 600px) {
+@media (max-width: 614px) {
   .nav-label {
     display: none;
   }
@@ -201,7 +201,7 @@
     margin-top: 8px;
   }
 }
-@media (max-width: 600px) {
+@media (max-width: 614px) {
   .compact-login,
   .auth-shell .login-page {
     padding-top: 30px;
@@ -348,8 +348,8 @@
   position: fixed;
   z-index: 10;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   padding: 0;
   background: transparent;
   border: 0;
@@ -561,7 +561,7 @@ html[data-theme="patriot"] .topbar {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 9px;
   min-height: 38px;
 }
 .topbar-actions > .nav-pill,
@@ -616,9 +616,9 @@ html[data-theme="patriot"] .topbar {
   transform: none;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 614px) {
   .topbar-actions {
-    gap: 5px;
+    gap: 6px;
   }
   .topbar-actions > .nav-pill,
   .topbar-actions > .profile-pill,
@@ -817,7 +817,21 @@ html[data-theme="patriot"] .topbar {
     transition: none;
   }
 }
-@media (max-width: 600px) {
+@media (max-width: 614px) {
+  .topbar-actions > .theme-menu > .theme-menu-trigger {
+    display: inline-flex;
+    width: 38px;
+    min-width: 38px;
+    padding: 0;
+  }
+  .theme-menu-trigger .nav-label {
+    display: none;
+  }
+  .theme-menu-panel {
+    position: fixed;
+    top: 72px;
+    right: 12px;
+  }
   .auth-loading {
     min-height: calc(100dvh - 64px);
   }
@@ -857,7 +871,7 @@ html[data-theme="patriot"] .topbar {
   color: var(--muted);
   font-size: 0.85rem;
 }
-@media (max-width: 600px) {
+@media (max-width: 614px) {
   .welcome-page {
     margin: 0vh auto;
   }
@@ -917,7 +931,7 @@ html[data-theme="light"] .account-actions .account-logout:hover,
 html[data-theme="light"] .account-actions .account-logout:focus-visible {
   color: #6e1616;
 }
-@media (max-width: 600px) {
+@media (max-width: 614px) {
   .watch-entry-form {
     flex-direction: column;
   }

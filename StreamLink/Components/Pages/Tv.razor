@@ -8,7 +8,7 @@
 @if (Session.Session is null) { <RedirectToLogin /> }
 else
 {
-    <div class="page-heading"><div><div class="eyebrow">LIVE TELEVISION</div><h1>What do you want to watch?</h1><p class="muted page-intro">Choose a category to start exploring.</p><span class="count-badge category-count"><span class="live-dot">LIVE</span> · @filteredCategories.Count() categories</span></div></div>
+    <div class="page-heading"><div><div class="eyebrow">LIVE TELEVISION</div><h1>What do you want to watch?</h1><p class="muted page-intro">Choose a category to start exploring.</p><span class="count-badge category-count live-count"><span class="live-dot">LIVE</span> · @filteredCategories.Count() categories</span></div></div>
     <input class="search category-search" placeholder="Search categories" aria-label="Search categories" @bind="Search" @bind:event="oninput" @bind:after="UpdateSearchUri" />
     @if (loading) { <div class="loading-card">Loading your categories…</div> }
     else if (!string.IsNullOrWhiteSpace(loadError)) { <div class="empty-card">@loadError</div> }

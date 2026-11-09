@@ -1,14 +1,10 @@
 @page "/account"
 @rendermode InteractiveServer
-@using System.Data.Common
-@using Microsoft.EntityFrameworkCore
 @inject SessionState Session
 @inject IXtreamApiService Xtream
-@inject ThemePreferenceService ThemePreferences
 @inject NavigationManager Navigation
 @inject SessionPersistence SessionPersistence
 @inject IJSRuntime Js
-@inject ILogger<Account> Logger
 
 <DocumentTitle Title="Account · StreamLink" />
 @if (Session.Session is null)
@@ -50,22 +46,9 @@ else
             <span>Trial</span><strong>@(Session.Session.UserInfo.IsTrial == "1" ? "Yes" : "No")</strong>
         </div>
     </section>
-    <section class="account-card theme-settings" aria-labelledby="theme-heading">
-        <div>
-            <h2 id="theme-heading">Color theme</h2>
-            <p class="muted">Choose a color palette for this account.</p>
-        </div>
-        <ThemePicker SelectedTheme="@Session.Theme"
-                     OnThemeSelected="ChangeThemeAsync" />
-        @if (!string.IsNullOrEmpty(themeMessage))
-        {
-            <p class="theme-message" role="status">@themeMessage</p>
-        }
-    </section>
 }
 
 @code {
-    private string? themeMessage;
     private string? formattedExpiration;
     private string? lastExpiration;
 
@@ -79,41 +62,6 @@ else
                 Session.SetSession(refreshed);
                 await Js.InvokeVoidAsync("streamlinkStorage.set", SessionPersistence.StorageKeyName, SessionPersistence.Protect(refreshed));
             }
-        }
-    }
-
-    private async Task ChangeThemeAsync(string? theme)
-    {
-        if (Session.Session is null || theme is null || !AppThemes.IsSupported(theme)) return;
-
-        themeMessage = null;
-        try
-        {
-            await ThemePreferences.SaveThemeAsync(Session.OwnerKey, theme);
-        }
-        catch (DbUpdateException ex)
-        {
-            Logger.LogError(ex, "Could not save the account theme preference.");
-            themeMessage = "The theme could not be saved. Please try again.";
-            return;
-        }
-        catch (DbException ex)
-        {
-            Logger.LogError(ex, "Could not save the account theme preference.");
-            themeMessage = "The theme could not be saved. Please try again.";
-            return;
-        }
-
-        Session.SetTheme(theme);
-        try
-        {
-            await Js.InvokeVoidAsync("streamlinkTheme.set", theme);
-            themeMessage = $"{AppThemes.All.Single(x => x.Id == theme).Name} theme saved.";
-        }
-        catch (JSException ex)
-        {
-            Logger.LogWarning(ex, "The saved account theme could not be applied in the browser.");
-            themeMessage = "The theme was saved, but could not be applied. Reload the page to apply it.";
         }
     }
 
