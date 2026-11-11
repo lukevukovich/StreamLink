@@ -7,9 +7,6 @@
     <meta name="referrer" content="no-referrer" />
     <title>StreamLink</title>
     <base href="/" />
-    <link rel="stylesheet" href="app.css?v=59" />
-    <link rel="stylesheet" href="streamlink-overrides.css?v=25" />
-    <link rel="stylesheet" href="StreamLink.styles.css" />
     <meta name="theme-color" content="#07181b" />
     <link rel="icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
     <link rel="shortcut icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
@@ -19,12 +16,16 @@
             const supportedThemes = @((MarkupString)System.Text.Json.JsonSerializer.Serialize(AppThemes.All.Select(theme => theme.Id)));
             const cacheKey = "streamlink.theme";
             const normalizeTheme = (theme) => theme === "jack-o-lantern" ? "halloween" : theme;
+            const updateThemeColor = () => {
+                const themeColor = document.querySelector('meta[name="theme-color"]');
+                const background = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+                if (themeColor && background) themeColor.content = background;
+            };
             const apply = (theme) => {
                 const normalizedTheme = normalizeTheme(theme);
                 const selectedTheme = supportedThemes.includes(normalizedTheme) ? normalizedTheme : "green";
                 document.documentElement.dataset.theme = selectedTheme;
-                const themeColor = document.querySelector('meta[name="theme-color"]');
-                if (themeColor) themeColor.content = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+                updateThemeColor();
                 return selectedTheme;
             };
 
@@ -66,6 +67,7 @@
 
             window.addEventListener("pageshow", restoreCachedTheme);
             window.addEventListener("popstate", restoreCachedTheme);
+            window.addEventListener("load", updateThemeColor);
             document.addEventListener("visibilitychange", () => {
                 if (!document.hidden) restoreCachedTheme();
             });
@@ -84,6 +86,9 @@
             };
         })();
     </script>
+    <link rel="stylesheet" href="app.css?v=59" />
+    <link rel="stylesheet" href="streamlink-overrides.css?v=25" />
+    <link rel="stylesheet" href="StreamLink.styles.css" />
     <HeadOutlet />
 </head>
 
