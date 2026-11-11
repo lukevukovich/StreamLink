@@ -42,6 +42,11 @@
                 }
             };
 
+            const restoreCachedTheme = () => {
+                const theme = readCachedTheme();
+                if (theme) apply(theme);
+            };
+
             let cachedTheme = readCachedTheme();
             if (cachedTheme) {
                 apply(cachedTheme);
@@ -58,6 +63,12 @@
                     console.warn("Could not migrate the cached theme preference.", error);
                 }
             }
+
+            window.addEventListener("pageshow", restoreCachedTheme);
+            window.addEventListener("popstate", restoreCachedTheme);
+            document.addEventListener("visibilitychange", () => {
+                if (!document.hidden) restoreCachedTheme();
+            });
 
             return {
                 get: readCachedTheme,
