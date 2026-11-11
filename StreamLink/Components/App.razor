@@ -30,39 +30,42 @@
             };
 
             const readCachedTheme = () => {
+                let theme = null;
                 try {
-                    const theme = localStorage.getItem(cacheKey);
-                    const normalizedTheme = normalizeTheme(theme);
-                    if (normalizedTheme !== theme && supportedThemes.includes(normalizedTheme)) {
-                        localStorage.setItem(cacheKey, normalizedTheme);
-                    }
-                    return supportedThemes.includes(normalizedTheme) ? normalizedTheme : null;
+                    theme = localStorage.getItem(cacheKey);
                 } catch (error) {
                     console.warn("Could not read the saved theme preference.", error);
+                }
+                let normalizedTheme = normalizeTheme(theme);
+                if (supportedThemes.includes(normalizedTheme)) {
+                    if (normalizedTheme !== theme) {
+                        try { localStorage.setItem(cacheKey, normalizedTheme); }
+                        catch (error) { console.warn("Could not update the saved theme preference.", error); }
+                    }
+                    return normalizedTheme;
+                }
+
+                try {
+                    theme = sessionStorage.getItem(cacheKey);
+                    normalizedTheme = normalizeTheme(theme);
+                    if (!supportedThemes.includes(normalizedTheme)) return null;
+                    try { localStorage.setItem(cacheKey, normalizedTheme); }
+                    catch (error) { console.warn("Could not migrate the cached theme preference.", error); }
+                    return normalizedTheme;
+                } catch (error) {
+                    console.warn("Could not read the cached theme from this tab.", error);
                     return null;
                 }
             };
 
             const restoreCachedTheme = () => {
                 const theme = readCachedTheme();
-                if (theme) apply(theme);
+                return theme ? apply(theme) : null;
             };
 
             let cachedTheme = readCachedTheme();
             if (cachedTheme) {
                 apply(cachedTheme);
-            } else {
-                try {
-                    const previousTabTheme = sessionStorage.getItem(cacheKey);
-                    const normalizedTheme = normalizeTheme(previousTabTheme);
-                    if (supportedThemes.includes(normalizedTheme)) {
-                        cachedTheme = normalizedTheme;
-                        apply(cachedTheme);
-                        localStorage.setItem(cacheKey, cachedTheme);
-                    }
-                } catch (error) {
-                    console.warn("Could not migrate the cached theme preference.", error);
-                }
             }
 
             window.addEventListener("pageshow", restoreCachedTheme);
@@ -74,6 +77,7 @@
 
             return {
                 get: readCachedTheme,
+                restore: restoreCachedTheme,
                 ready: () => document.getElementById("streamlink-initial-loading")?.remove(),
                 set: (theme) => {
                     const selectedTheme = apply(theme);
@@ -81,6 +85,11 @@
                         localStorage.setItem(cacheKey, selectedTheme);
                     } catch (error) {
                         console.warn("Could not save the theme preference locally.", error);
+                    }
+                    try {
+                        sessionStorage.setItem(cacheKey, selectedTheme);
+                    } catch (error) {
+                        console.warn("Could not save the theme preference for this tab.", error);
                     }
                 }
             };
@@ -177,7 +186,7 @@
         };
     </script>
     <script src="_framework/blazor.web.js" autostart="false"></script>
-    <script src="js/reconnect.js?v=1"></script>
+    <script src="js/reconnect.js?v=2"></script>
 </body>
 
 </html>

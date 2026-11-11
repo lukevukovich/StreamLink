@@ -44,12 +44,16 @@
         if (!firstRender) return;
 
         var cachedTheme = AppThemes.Default;
+        string? themeToApply = null;
         try
         {
             await Js.InvokeVoidAsync("streamlinkTheme.ready");
             var browserTheme = await Js.InvokeAsync<string?>("streamlinkTheme.get");
             if (browserTheme is not null && AppThemes.IsSupported(browserTheme))
+            {
                 cachedTheme = browserTheme;
+                themeToApply = cachedTheme;
+            }
             Session.SetTheme(cachedTheme);
 
             var protectedSession = await Js.InvokeAsync<string?>("streamlinkStorage.get", SessionPersistence.StorageKeyName);
@@ -57,7 +61,8 @@
             if (restored is not null)
             {
                 Session.SetSession(restored);
-                Session.SetTheme(await ThemePreferences.GetThemeAsync(Session.OwnerKey));
+                themeToApply = await ThemePreferences.GetThemeAsync(Session.OwnerKey);
+                Session.SetTheme(themeToApply);
             }
         }
         catch (Microsoft.Data.Sqlite.SqliteException ex)
@@ -65,11 +70,17 @@
             Logger.LogError(ex, "Could not load the account theme preference.");
             Session.SetTheme(cachedTheme);
         }
-        catch (JSException) { }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "Could not restore the browser theme preference.");
+        }
         finally
         {
-            try { await Js.InvokeVoidAsync("streamlinkTheme.set", Session.Theme); }
-            catch (JSException ex) { Logger.LogWarning(ex, "Could not apply the saved theme in the browser."); }
+            if (themeToApply is not null)
+            {
+                try { await Js.InvokeVoidAsync("streamlinkTheme.set", themeToApply); }
+                catch (JSException ex) { Logger.LogWarning(ex, "Could not apply the saved theme in the browser."); }
+            }
             Session.MarkHydrated();
             if (Navigation.ToBaseRelativePath(Navigation.Uri).Equals("login", StringComparison.OrdinalIgnoreCase) && Session.IsAuthenticated)
                 Navigation.NavigateTo("/", replace: true);
