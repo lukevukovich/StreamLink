@@ -85,4 +85,7 @@
       },
     },
   });
+  Blazor.addEventListener("enhancedload", () => {
+    window.streamlinkTheme.restore();
+  });
 })();
