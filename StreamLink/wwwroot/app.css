@@ -444,7 +444,18 @@ h1 {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: var(--bg);
+  --bg: #101010;
+  --muted: #a3a3a3;
+  --accent-rgb: 128 128 128;
+  --mint: #b5b5b5;
+  background: #101010;
+}
+html:not([data-theme-ready="true"]) .auth-loading {
+  --bg: #101010;
+  --muted: #a3a3a3;
+  --accent-rgb: 128 128 128;
+  --mint: #b5b5b5;
+  background: #101010;
 }
 .topbar {
   height: 72px;

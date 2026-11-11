@@ -7,24 +7,28 @@
     <meta name="referrer" content="no-referrer" />
     <title>StreamLink</title>
     <base href="/" />
-    <meta name="theme-color" content="#07181b" />
+    <meta name="theme-color" content="#101010" />
     <link rel="icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
     <link rel="shortcut icon" type="image/svg+xml" href="/streamlink-icon.svg?v=3" />
     <link rel="mask-icon" href="/streamlink-icon.svg?v=3" color="#89c0b6" />
     <script>
         window.streamlinkTheme = (() => {
             const supportedThemes = @((MarkupString)System.Text.Json.JsonSerializer.Serialize(AppThemes.All.Select(theme => theme.Id)));
+            const themeColors = @((MarkupString)System.Text.Json.JsonSerializer.Serialize(AppThemes.All.ToDictionary(theme => theme.Id, theme => theme.MainColor)));
             const cacheKey = "streamlink.theme";
             const normalizeTheme = (theme) => theme === "jack-o-lantern" ? "halloween" : theme;
             const updateThemeColor = () => {
+                if (!document.documentElement.dataset.themeReady) return;
                 const themeColor = document.querySelector('meta[name="theme-color"]');
-                const background = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+                const background = themeColors[document.documentElement.dataset.theme]
+                    || getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
                 if (themeColor && background) themeColor.content = background;
             };
-            const apply = (theme) => {
+            const apply = (theme, ready = true) => {
                 const normalizedTheme = normalizeTheme(theme);
                 const selectedTheme = supportedThemes.includes(normalizedTheme) ? normalizedTheme : "green";
                 document.documentElement.dataset.theme = selectedTheme;
+                if (ready) document.documentElement.dataset.themeReady = "true";
                 updateThemeColor();
                 return selectedTheme;
             };
@@ -60,12 +64,12 @@
 
             const restoreCachedTheme = () => {
                 const theme = readCachedTheme();
-                return theme ? apply(theme) : null;
+                return theme ? apply(theme, Boolean(document.documentElement.dataset.themeReady)) : null;
             };
 
             let cachedTheme = readCachedTheme();
             if (cachedTheme) {
-                apply(cachedTheme);
+                apply(cachedTheme, false);
             }
 
             window.addEventListener("pageshow", restoreCachedTheme);
@@ -95,7 +99,7 @@
             };
         })();
     </script>
-    <link rel="stylesheet" href="app.css?v=59" />
+    <link rel="stylesheet" href="app.css?v=60" />
     <link rel="stylesheet" href="streamlink-overrides.css?v=25" />
     <link rel="stylesheet" href="StreamLink.styles.css" />
     <HeadOutlet />
