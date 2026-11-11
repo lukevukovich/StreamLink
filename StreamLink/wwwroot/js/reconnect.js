@@ -36,6 +36,7 @@
     circuit: {
       reconnectionHandler: {
         onConnectionDown: () => {
+          window.streamlinkTheme?.restore?.();
           if (process) return;
           const current = { active: true };
           process = current;
@@ -72,6 +73,7 @@
           })();
         },
         onConnectionUp: () => {
+          window.streamlinkTheme?.restore?.();
           if (process) {
             process.active = false;
             process.cancelWait?.();
