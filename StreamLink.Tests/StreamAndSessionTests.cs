@@ -207,8 +207,10 @@ public class ThemePreferenceTests
 
             var preferences = new ThemePreferenceService(factory);
             Assert.Equal(AppThemes.Default, await preferences.GetThemeAsync("account-one"));
+            Assert.Null(await preferences.GetSavedThemeAsync("account-one"));
 
             await preferences.SaveThemeAsync("account-one", "blue");
+            Assert.Equal("blue", await preferences.GetSavedThemeAsync("account-one"));
             await preferences.SaveThemeAsync("account-two", "red");
             await preferences.SaveThemeAsync("account-one", "light");
             await preferences.SaveThemeAsync("account-two", "dark");

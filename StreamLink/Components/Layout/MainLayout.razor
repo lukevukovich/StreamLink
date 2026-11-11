@@ -60,7 +60,7 @@
             if (restored is not null)
             {
                 Session.SetSession(restored);
-                themeToApply = await ThemePreferences.GetThemeAsync(Session.OwnerKey);
+                themeToApply = await ThemePreferences.GetSavedThemeAsync(Session.OwnerKey) ?? cachedTheme;
                 Session.SetTheme(themeToApply);
             }
             else if (themeToApply is null)
