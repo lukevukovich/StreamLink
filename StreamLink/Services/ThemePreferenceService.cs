@@ -68,7 +68,10 @@ public static class AppThemes
 
 public sealed class ThemePreferenceService(IDbContextFactory<StreamLinkDbContext> dbFactory)
 {
-    public async Task<string> GetThemeAsync(string ownerKey, CancellationToken cancellationToken = default)
+    public async Task<string> GetThemeAsync(string ownerKey, CancellationToken cancellationToken = default) =>
+        await GetSavedThemeAsync(ownerKey, cancellationToken) ?? AppThemes.Default;
+
+    public async Task<string?> GetSavedThemeAsync(string ownerKey, CancellationToken cancellationToken = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var preference = await db.ThemePreferences
@@ -76,7 +79,7 @@ public sealed class ThemePreferenceService(IDbContextFactory<StreamLinkDbContext
             .SingleOrDefaultAsync(x => x.OwnerKey == ownerKey, cancellationToken);
         return preference is not null && AppThemes.IsSupported(preference.Theme)
             ? preference.Theme
-            : AppThemes.Default;
+            : null;
     }
 
     public async Task SaveThemeAsync(string ownerKey, string theme, CancellationToken cancellationToken = default)

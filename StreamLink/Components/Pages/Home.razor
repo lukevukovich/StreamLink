@@ -67,8 +67,8 @@ else
 			else
 			{
 				Session.SetSession(session);
-				var theme = AppThemes.Default;
-				try { theme = await ThemePreferences.GetThemeAsync(Session.OwnerKey); }
+				var theme = Session.Theme;
+				try { theme = await ThemePreferences.GetSavedThemeAsync(Session.OwnerKey) ?? theme; }
 				catch (Microsoft.Data.Sqlite.SqliteException ex)
 				{
 					Logger.LogError(ex, "Could not load the account theme preference.");
