@@ -30,6 +30,7 @@ else
             </button>
         </div>
     </div>
+    @if (refreshError is not null) { <div class="alert" role="alert">@refreshError</div> }
     <section class="account-card">
         <div class="account-status">
             <span class="status-dot"></span>
@@ -51,17 +52,24 @@ else
 @code {
     private string? formattedExpiration;
     private string? lastExpiration;
+    private string? refreshError;
 
     private async Task Refresh()
     {
         if (Session.Session is not null)
         {
-            var refreshed = await Xtream.RefreshAccountAsync(Session.Session);
-            if (refreshed is not null)
+            refreshError = null;
+            try
             {
-                Session.SetSession(refreshed);
-                await Js.InvokeVoidAsync("streamlinkStorage.set", SessionPersistence.StorageKeyName, SessionPersistence.Protect(refreshed));
+                var refreshed = await Xtream.RefreshAccountAsync(Session.Session);
+                if (refreshed is not null)
+                {
+                    Session.SetSession(refreshed);
+                    await Js.InvokeVoidAsync("streamlinkStorage.set", SessionPersistence.StorageKeyName, SessionPersistence.Protect(refreshed));
+                }
             }
+            catch (ProviderAccessException ex) { refreshError = ex.Message; }
+            catch (ProviderResponseException) { refreshError = "The provider could not refresh your account. Please try again."; }
         }
     }
 

@@ -1,0 +1,69 @@
+@baseUrl = http://localhost:5059
+@token = paste-token-from-create-session
+@shareCode = paste-share-code
+
+### Verify credentials and obtain a one-hour token (localhost development only).
+POST {{baseUrl}}/api/sessions
+Content-Type: application/json
+
+{
+  "serverUrl": "https://provider.example",
+  "username": "your-username",
+  "password": "your-password"
+}
+
+### Refresh account status.
+GET {{baseUrl}}/api/account
+Authorization: Bearer {{token}}
+
+### Browse and search categories.
+GET {{baseUrl}}/api/categories?search=news&sort=name
+Authorization: Bearer {{token}}
+
+### Browse channels in a category (categoryId is required).
+GET {{baseUrl}}/api/channels?categoryId=7&sort=name
+Authorization: Bearer {{token}}
+
+### Get a channel by ID within a category (categoryId is required).
+GET {{baseUrl}}/api/channels/42?categoryId=7
+Authorization: Bearer {{token}}
+
+### A missing category ID returns 400.
+GET {{baseUrl}}/api/channels
+Authorization: Bearer {{token}}
+
+### Create or reuse a share.
+POST {{baseUrl}}/api/shares
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "streamId": 42,
+  "categoryId": "7",
+  "expirationHours": 4
+}
+
+### List active shares.
+GET {{baseUrl}}/api/shares?sort=expiring
+Authorization: Bearer {{token}}
+
+### Get one owned share.
+GET {{baseUrl}}/api/shares/{{shareCode}}
+Authorization: Bearer {{token}}
+
+### Reset the share lifetime.
+PUT {{baseUrl}}/api/shares/{{shareCode}}/expiration
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "expirationHours": 8
+}
+
+### Revoke the share.
+DELETE {{baseUrl}}/api/shares/{{shareCode}}
+Authorization: Bearer {{token}}
+
+### A revoked or unknown share returns 404.
+GET {{baseUrl}}/api/shares/{{shareCode}}
+Authorization: Bearer {{token}}

@@ -22,3 +22,5 @@ public sealed class ThemePreference
 }
 
 public sealed record SharePlayback(ShareLink Link, string StreamUrl);
+
+public sealed record ShareCreationResult(ShareLink Link, bool Reused);

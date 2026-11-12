@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.DataProtection;
 namespace StreamLink.Services;
 
 // Resolves a provider redirect without downloading or forwarding the media body.
-public sealed class ExternalLinkService(IDataProtectionProvider protection, IHttpClientFactory clients, IShareLinkService shares)
+public sealed class ExternalLinkService(IDataProtectionProvider protection, IHttpClientFactory clients, IShareLinkService shares, ProviderAccessPolicy providerAccess, ILogger<ExternalLinkService> logger)
 {
     private readonly ITimeLimitedDataProtector grants = protection.CreateProtector("external-link-grants-v1").ToTimeLimitedDataProtector();
 
@@ -24,6 +24,11 @@ public sealed class ExternalLinkService(IDataProtectionProvider protection, IHtt
             : grant.ChannelUrl;
         if (!Uri.TryCreate(source, UriKind.Absolute, out var original) || original.Scheme is not ("http" or "https") ||
             !string.IsNullOrEmpty(original.UserInfo) || !TryGetCredentials(original, out var username, out var password)) return null;
+        if (!providerAccess.IsAllowed(original))
+        {
+            logger.LogWarning("A stream request was blocked because its provider origin is not approved.");
+            return null;
+        }
 
         try
         {
@@ -36,6 +41,11 @@ public sealed class ExternalLinkService(IDataProtectionProvider protection, IHtt
             if (target.Scheme is not ("http" or "https") || !string.IsNullOrEmpty(target.UserInfo) ||
                 target == original || target.Fragment.Length != 0 ||
                 ContainsCredential(target, username) || ContainsCredential(target, password)) return null;
+            if (target.Scheme == "http" && !providerAccess.IsAllowed(target))
+            {
+                logger.LogWarning("A stream redirect was blocked because its HTTP origin is not approved.");
+                return null;
+            }
             return target.AbsoluteUri;
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or UriFormatException or InvalidOperationException)

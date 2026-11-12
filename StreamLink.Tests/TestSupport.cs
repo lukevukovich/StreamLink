@@ -20,6 +20,14 @@ internal static class TestSupport
 
     public static IDataProtectionProvider Protection() => new EphemeralDataProtectionProvider();
 
+    public static ProviderAccessPolicy ProviderPolicy() => new(new ConfigurationBuilder()
+        .AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ProviderSecurity:AllowedOrigins:0"] = "https://provider.example",
+            ["ProviderSecurity:AllowedOrigins:1"] = "https://provider.example:8443",
+            ["ProviderSecurity:AllowedOrigins:2"] = "https://cdn.example:9443"
+        }).Build());
+
     public static IConfiguration ShareConfiguration() => new ConfigurationBuilder()
         .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"))
         .Build();
@@ -30,7 +38,7 @@ internal static class TestSupport
         var factory = new SimpleDbFactory(options);
         using (var db = factory.CreateDbContext()) db.Database.EnsureCreated();
         var persistence = new SessionPersistence(Protection());
-        return (new ShareLinkService(factory, new StreamUrlService(), persistence, ShareConfiguration()), factory, persistence);
+        return (new ShareLinkService(factory, new StreamUrlService(ProviderPolicy()), persistence, ShareConfiguration()), factory, persistence);
     }
 }
 
@@ -74,6 +82,7 @@ internal sealed class StubShares : IShareLinkService
     }
 
     public Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+    public Task<ShareCreationResult> CreateOrReuseAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task<IReadOnlyList<ShareLink>> GetActiveAsync(string ownerKey, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task<ShareLink?> UpdateExpirationAsync(string token, string ownerKey, int expirationHours, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task<ShareLink?> GetAsync(string token, CancellationToken cancellationToken = default) => throw new NotImplementedException();

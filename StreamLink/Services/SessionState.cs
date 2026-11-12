@@ -22,9 +22,12 @@ public sealed class SessionState
     public void SetSession(XtreamSession session)
     {
         Session = session;
-        OwnerKey = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{session.ServerUrl}\n{session.Username}"))).ToLowerInvariant();
+        OwnerKey = GetOwnerKey(session);
         if (IsHydrated) Changed?.Invoke();
     }
+
+    public static string GetOwnerKey(XtreamSession session) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{session.ServerUrl}\n{session.Username}"))).ToLowerInvariant();
 
     public void SetTheme(string theme)
     {

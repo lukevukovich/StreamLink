@@ -25,7 +25,7 @@ public sealed class XtreamUserInfo
 
     [JsonIgnore]
     public DateTimeOffset? Expiration
-        => long.TryParse(ExpirationDate, out var unixSeconds)
+        => long.TryParse(ExpirationDate, out var unixSeconds) && unixSeconds is >= -62135596800 and <= 253402300799
             ? DateTimeOffset.FromUnixTimeSeconds(unixSeconds)
             : null;
 }

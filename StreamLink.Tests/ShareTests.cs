@@ -115,7 +115,7 @@ public class ShareTests : IDisposable
         {
             ["ShareLinks:MaxActivePerOwner"] = "2"
         }).Build();
-        var service = new ShareLinkService(factory, new StreamUrlService(), persistence, config);
+        var service = new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, config);
         await using (var db = await factory.CreateDbContextAsync())
         {
             db.ShareLinks.AddRange(
@@ -131,10 +131,10 @@ public class ShareTests : IDisposable
         foreach (var invalid in new[] { "0", "101", "not-a-number" })
         {
             config["ShareLinks:MaxActivePerOwner"] = invalid;
-            Assert.Throws<InvalidOperationException>(() => new ShareLinkService(factory, new StreamUrlService(), persistence, config));
+            Assert.Throws<InvalidOperationException>(() => new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, config));
         }
         config["ShareLinks:MaxActivePerOwner"] = null;
-        Assert.Throws<InvalidOperationException>(() => new ShareLinkService(factory, new StreamUrlService(), persistence, config));
+        Assert.Throws<InvalidOperationException>(() => new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, config));
     }
 
     [Fact]
@@ -167,7 +167,7 @@ public class ShareTests : IDisposable
     public async Task Create_EnforcesLimitAcrossServiceInstances()
     {
         var (service, factory, persistence) = TestSupport.Shares(database);
-        var other = new ShareLinkService(factory, new StreamUrlService(), persistence, shareConfiguration);
+        var other = new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, shareConfiguration);
         var attempts = Enumerable.Range(0, MaxActiveLinks + 6).Select(async id =>
         {
             try { await (id % 2 == 0 ? service : other).CreateAsync(TestSupport.Session(), "owner", Channel(id), "News", 1); }

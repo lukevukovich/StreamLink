@@ -26,9 +26,7 @@ else
     private string? loadError;
     [SupplyParameterFromQuery(Name = "search")]
     public string? Search { get; set; } = "";
-    private IEnumerable<XtreamCategory> filteredCategories => string.IsNullOrWhiteSpace(Search)
-        ? categories
-        : categories.Where(category => category.Name.Contains(Search, StringComparison.OrdinalIgnoreCase));
+    private IEnumerable<XtreamCategory> filteredCategories => CatalogSort.Apply(categories, category => category.Name, Search, "provider");
     private void UpdateSearchUri() => Navigation.NavigateTo(
         Navigation.GetUriWithQueryParameter("search", string.IsNullOrWhiteSpace(Search) ? null : Search),
         replace: true);
@@ -36,6 +34,7 @@ else
     {
         if (Session.Session is null) return;
         try { categories = await Xtream.GetCategoriesAsync(Session.Session); }
+        catch (ProviderAccessException ex) { loadError = ex.Message; }
         catch (Exception) { loadError = "We couldn't load your live TV categories. Try refreshing the page."; }
         finally { loading = false; }
     }

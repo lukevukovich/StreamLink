@@ -29,6 +29,10 @@ else
 		<p class="muted">Connect your Xtream account to browse and watch live television anywhere.</p>
 		<div class="login-form" @onkeydown="HandleKeyDown">
 			<label>Server URL<input @bind="credentials.ServerUrl" @bind:event="oninput" placeholder="https://provider.example" inputmode="url" /></label>
+			@if (Uri.TryCreate(credentials.ServerUrl.Trim(), UriKind.Absolute, out var enteredServer) && enteredServer.Scheme == "http")
+			{
+				<div class="alert" role="alert">This provider uses HTTP. Your provider credentials will be sent unencrypted.</div>
+			}
 			<label>Username<input @bind="credentials.Username" @bind:event="oninput" autocomplete="username" /></label>
 			<label>Password<input @bind="credentials.Password" @bind:event="oninput" type="password" autocomplete="current-password" /></label>
 			@if (!string.IsNullOrWhiteSpace(error)) { <div class="alert">@error</div> }
@@ -80,6 +84,8 @@ else
 				Navigation.NavigateTo("/", replace: true);
 			}
 		}
+		catch (ProviderAccessException ex) { error = ex.Message; }
+		catch (ProviderResponseException) { error = "We couldn't connect. Check your details and provider address, then try again."; }
 		catch (JSException) { error = "The browser could not save this session. Please allow site storage and try again."; }
 		catch (Exception) { error = "The provider responded, but StreamLink could not complete the sign-in. Please try again."; }
 		finally { busy = false; }
