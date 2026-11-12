@@ -2,10 +2,11 @@ using StreamLink.Models;
 
 namespace StreamLink.Services;
 
-public sealed class StreamUrlService : IStreamUrlService
+public sealed class StreamUrlService(ProviderAccessPolicy providerAccess) : IStreamUrlService
 {
     public StreamLinks BuildLinks(XtreamSession session, int streamId)
     {
+        providerAccess.EnsureAllowedBase(session.ServerUrl);
         var baseUrl = session.ServerUrl;
         var info = session.ServerInfo;
         if (!string.IsNullOrWhiteSpace(info.Url) &&
@@ -23,6 +24,7 @@ public sealed class StreamUrlService : IStreamUrlService
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var origin) || origin.Scheme is not ("http" or "https") ||
             !string.IsNullOrEmpty(origin.UserInfo) || !string.IsNullOrEmpty(origin.Query) || !string.IsNullOrEmpty(origin.Fragment))
             throw new InvalidOperationException("The provider returned an invalid stream server URL.");
+        if (!providerAccess.IsAllowed(origin)) throw new ProviderAccessException();
         baseUrl = baseUrl.TrimEnd('/');
         var hls = $"{baseUrl}/live/{Uri.EscapeDataString(session.Username)}/{Uri.EscapeDataString(session.Password)}/{streamId}.m3u8";
         var ts = $"{baseUrl}/live/{Uri.EscapeDataString(session.Username)}/{Uri.EscapeDataString(session.Password)}/{streamId}.ts";

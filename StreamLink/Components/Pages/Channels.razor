@@ -32,7 +32,7 @@ else
     private IReadOnlyList<XtreamChannel> channels = []; private bool loading = true; private string? loadError;
     [SupplyParameterFromQuery(Name = "search")]
     public string? Search { get; set; } = "";
-    private IEnumerable<XtreamChannel> filteredChannels => string.IsNullOrWhiteSpace(Search) ? channels : channels.Where(x => x.Name.Contains(Search, StringComparison.OrdinalIgnoreCase));
+    private IEnumerable<XtreamChannel> filteredChannels => CatalogSort.Apply(channels, channel => channel.Name, Search, "provider");
     private void UpdateSearchUri() => Navigation.NavigateTo(
         Navigation.GetUriWithQueryParameter("search", string.IsNullOrWhiteSpace(Search) ? null : Search),
         replace: true);
@@ -57,6 +57,7 @@ else
                 channels = results;
             }
         }
+        catch (ProviderAccessException ex) { if (CategoryId == categoryId) loadError = ex.Message; }
         catch (Exception) { if (CategoryId == categoryId) loadError = "Couldn't load channels. Try refreshing the page."; }
         finally { if (CategoryId == categoryId) loading = false; }
     }

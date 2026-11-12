@@ -23,7 +23,10 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
     // serializes the count and insert across multiple app instances.
     private static readonly SemaphoreSlim CreationGate = new(1, 1);
 
-    public async Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default)
+    public async Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default) =>
+        (await CreateOrReuseAsync(session, ownerKey, channel, categoryName, expirationHours, cancellationToken)).Link;
+
+    public async Task<ShareCreationResult> CreateOrReuseAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default)
     {
         ValidateExpirationHours(expirationHours);
         await CreationGate.WaitAsync(cancellationToken);
@@ -37,7 +40,7 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
             if (existing is not null)
             {
                 await transaction.CommitAsync(cancellationToken);
-                return existing;
+                return new(existing, true);
             }
 
             var activeCount = await db.ShareLinks.CountAsync(x => x.OwnerKey == ownerKey && !x.Revoked && x.ExpiresUtc > now, cancellationToken);
@@ -54,7 +57,7 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
             await db.ShareLinks.AddAsync(link, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return link;
+            return new(link, false);
         }
         finally { CreationGate.Release(); }
     }

@@ -34,6 +34,19 @@ public static class ShareSortOptions
 
     public static bool IsSupported(string value) =>
         All.Any(option => string.Equals(option.Id, value, StringComparison.Ordinal));
+
+    public static IEnumerable<ShareLink> Sort(IEnumerable<ShareLink> links, string sort) => sort switch
+    {
+        Newest => links.OrderByDescending(link => link.CreatedUtc),
+        Oldest => links.OrderBy(link => link.CreatedUtc),
+        Latest => links.OrderByDescending(link => link.ExpiresUtc).ThenByDescending(link => link.CreatedUtc),
+        Channel => links.OrderBy(link => link.ChannelName, StringComparer.OrdinalIgnoreCase).ThenByDescending(link => link.CreatedUtc),
+        ChannelDescending => links.OrderByDescending(link => link.ChannelName, StringComparer.OrdinalIgnoreCase).ThenByDescending(link => link.CreatedUtc),
+        Category => links.OrderBy(link => link.CategoryName, StringComparer.OrdinalIgnoreCase).ThenBy(link => link.ChannelName, StringComparer.OrdinalIgnoreCase).ThenByDescending(link => link.CreatedUtc),
+        CategoryDescending => links.OrderByDescending(link => link.CategoryName, StringComparer.OrdinalIgnoreCase).ThenBy(link => link.ChannelName, StringComparer.OrdinalIgnoreCase).ThenByDescending(link => link.CreatedUtc),
+        Expiring => links.OrderBy(link => link.ExpiresUtc),
+        _ => throw new ArgumentException("Unsupported share sort order.", nameof(sort))
+    };
 }
 
 public static class AppThemes

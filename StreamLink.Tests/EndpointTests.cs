@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
@@ -22,6 +24,49 @@ public class EndpointTests : IClassFixture<EndpointFactory>
         using var scope = factory.Services.CreateScope();
         using var client = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("Xtream");
         Assert.Equal("StreamLink/1.0", client.DefaultRequestHeaders.UserAgent.ToString());
+    }
+
+    [Fact]
+    public void XtreamClient_DoesNotFollowRedirectsOrUseCookies()
+    {
+        using var handler = factory.Services.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler("Xtream");
+        HttpMessageHandler current = handler;
+        while (current is DelegatingHandler delegating)
+            current = delegating.InnerHandler!;
+        var clientHandler = Assert.IsType<HttpClientHandler>(current);
+        Assert.False(clientHandler.AllowAutoRedirect);
+        Assert.False(clientHandler.UseCookies);
+    }
+
+    [Fact]
+    public async Task XtreamClient_DoesNotFollowProviderRedirect()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        await using var server = builder.Build();
+        var followed = 0;
+        server.MapGet("/player_api.php", (HttpContext context) => Results.Redirect($"http://{context.Request.Host}/redirect"));
+        server.MapGet("/redirect", () =>
+        {
+            Interlocked.Increment(ref followed);
+            return Results.Json(new { user_info = new { auth = 1 } });
+        });
+        await server.StartAsync();
+        try
+        {
+            var origin = server.Urls.Single();
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ProviderSecurity:AllowedOrigins:0"] = origin
+            }).Build();
+            var service = new XtreamApiService(factory.Services.GetRequiredService<IHttpClientFactory>(), new ProviderAccessPolicy(configuration));
+            await Assert.ThrowsAsync<ProviderResponseException>(() => service.LoginAsync(origin, "user", "password"));
+            Assert.Equal(0, followed);
+        }
+        finally
+        {
+            await server.StopAsync();
+        }
     }
 
     [Fact]
@@ -179,6 +224,8 @@ public sealed class EndpointFactory : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 { ["ConnectionStrings:StreamLink"] = $"Data Source={Path.Combine(root, "test.db")}",
                     ["DataProtection:KeyDirectory"] = Path.Combine(root, "keys"),
+                    ["ProviderSecurity:AllowedOrigins:0"] = "https://provider.example",
+                    ["ProviderSecurity:AllowedOrigins:1"] = "https://provider.example:8443",
                     ["PublicBaseUrl"] = "https://streamlink.example.com/" }));
         builder.ConfigureTestServices(services => services.AddHttpClient("ExternalLinkRedirect")
             .ConfigurePrimaryHttpMessageHandler(() => new StubHandler(_ =>

@@ -12,11 +12,11 @@ public class StreamAndSessionTests
     public void StreamUrls_EscapeCredentialsAndHonorFormats()
     {
         var session = TestSupport.Session("TS");
-        var links = new StreamUrlService().BuildLinks(session, 42);
+        var links = new StreamUrlService(TestSupport.ProviderPolicy()).BuildLinks(session, 42);
         Assert.Equal("https://provider.example:8443/live/user%20name/p%40ss%20word/42.ts", links.TsUrl);
         Assert.False(links.HlsAllowed);
         Assert.True(links.TsAllowed);
-        Assert.True(new StreamUrlService().BuildLinks(TestSupport.Session(""), 42).HlsAllowed);
+        Assert.True(new StreamUrlService(TestSupport.ProviderPolicy()).BuildLinks(TestSupport.Session(""), 42).HlsAllowed);
     }
 
     [Fact]
@@ -25,9 +25,9 @@ public class StreamAndSessionTests
         var session = TestSupport.Session();
         session = new XtreamSession { ServerUrl = session.ServerUrl, Username = session.Username, Password = session.Password,
             UserInfo = session.UserInfo, ServerInfo = new() { Url = "cdn.example", Protocol = "https", HttpsPort = "9443" } };
-        Assert.StartsWith("https://cdn.example:9443/live/", new StreamUrlService().BuildLinks(session, 1).HlsUrl);
+        Assert.StartsWith("https://cdn.example:9443/live/", new StreamUrlService(TestSupport.ProviderPolicy()).BuildLinks(session, 1).HlsUrl);
         session.ServerInfo.Url = "cdn.example/unsafe";
-        Assert.StartsWith("https://provider.example:8443/live/", new StreamUrlService().BuildLinks(session, 1).HlsUrl);
+        Assert.StartsWith("https://provider.example:8443/live/", new StreamUrlService(TestSupport.ProviderPolicy()).BuildLinks(session, 1).HlsUrl);
     }
 
     [Theory]
@@ -37,7 +37,7 @@ public class StreamAndSessionTests
     public void StreamUrls_RejectUnsafeOrigin(string origin)
     {
         var session = TestSupport.Session();
-        Assert.Throws<InvalidOperationException>(() => new StreamUrlService().BuildLinks(new XtreamSession
+        Assert.Throws<ProviderAccessException>(() => new StreamUrlService(TestSupport.ProviderPolicy()).BuildLinks(new XtreamSession
         { ServerUrl = origin, Username = session.Username, Password = session.Password, UserInfo = session.UserInfo }, 1));
     }
 
@@ -282,7 +282,7 @@ public class XtreamApiTests
     {
         var handler = new StubHandler(_ => StubHandler.Json("{\"user_info\":{\"auth\":\"1\",\"active_cons\":\"2\"}}"));
         var clients = new StubClients(handler);
-        var api = new XtreamApiService(clients);
+        var api = new XtreamApiService(clients, TestSupport.ProviderPolicy());
         Assert.Null(await api.LoginAsync("ftp://provider.example", "u", "p"));
         var session = await api.LoginAsync(" https://provider.example/ ", "a+b", "p &" );
         Assert.NotNull(session);
@@ -301,7 +301,7 @@ public class XtreamApiTests
             if (query.Contains("get_live_streams")) return StubHandler.Json("{\"first\":[{\"stream_id\":\"12\",\"category_id\":\"7\",\"name\":\"One\"}],\"second\":[{\"stream_id\":13,\"name\":\"Two\"}]}");
             return StubHandler.Json("{\"user_info\":{\"auth\":1}}");
         });
-        var api = new XtreamApiService(new StubClients(handler));
+        var api = new XtreamApiService(new StubClients(handler), TestSupport.ProviderPolicy());
         var session = TestSupport.Session();
         Assert.NotNull(await api.RefreshAccountAsync(session));
         var channels = await api.GetChannelsAsync(session, "a & b");
@@ -312,20 +312,19 @@ public class XtreamApiTests
     }
 
     [Theory]
-    [InlineData("not json", HttpStatusCode.OK)]
-    [InlineData("[]", HttpStatusCode.ServiceUnavailable)]
     [InlineData("{\"user_info\":{\"auth\":0}}", HttpStatusCode.OK)]
     public async Task Api_FailsClosedOnBadLogin(string body, HttpStatusCode status)
     {
-        var api = new XtreamApiService(new StubClients(new StubHandler(_ => StubHandler.Json(body, status))));
+        var api = new XtreamApiService(new StubClients(new StubHandler(_ => StubHandler.Json(body, status))), TestSupport.ProviderPolicy());
         Assert.Null(await api.LoginAsync("https://provider.example", "u", "p"));
     }
 
     [Fact]
-    public async Task Api_ReturnsEmptyListsOnMalformedOrUnavailableResponses()
+    public async Task Api_ReportsMalformedOrUnavailableResponses()
     {
-        var api = new XtreamApiService(new StubClients(new StubHandler(_ => StubHandler.Json("invalid"))));
-        Assert.Empty(await api.GetCategoriesAsync(TestSupport.Session()));
-        Assert.Empty(await api.GetChannelsAsync(TestSupport.Session(), "1"));
+        var api = new XtreamApiService(new StubClients(new StubHandler(_ => StubHandler.Json("invalid"))), TestSupport.ProviderPolicy());
+        await Assert.ThrowsAsync<ProviderResponseException>(() => api.GetCategoriesAsync(TestSupport.Session()));
+        await Assert.ThrowsAsync<ProviderResponseException>(() => api.GetChannelsAsync(TestSupport.Session(), "1"));
+        await Assert.ThrowsAsync<ProviderResponseException>(() => api.LoginAsync("https://provider.example", "u", "p"));
     }
 }

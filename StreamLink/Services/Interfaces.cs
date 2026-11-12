@@ -15,9 +15,15 @@ public interface IStreamUrlService
     StreamLinks BuildLinks(XtreamSession session, int streamId);
 }
 
+public interface ICatalogService
+{
+    Task<CatalogChannel?> FindChannelAsync(XtreamSession session, int streamId, string? categoryId = null, CancellationToken cancellationToken = default);
+}
+
 public interface IShareLinkService
 {
     Task<ShareLink> CreateAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default);
+    Task<ShareCreationResult> CreateOrReuseAsync(XtreamSession session, string ownerKey, XtreamChannel channel, string categoryName, int expirationHours, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ShareLink>> GetActiveAsync(string ownerKey, CancellationToken cancellationToken = default);
     Task<ShareLink?> UpdateExpirationAsync(string token, string ownerKey, int expirationHours, CancellationToken cancellationToken = default);
     Task<ShareLink?> GetAsync(string token, CancellationToken cancellationToken = default);

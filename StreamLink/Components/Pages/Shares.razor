@@ -76,24 +76,7 @@ else
     private int updateHours = 4;
     private string? pageMessage;
 
-    private IEnumerable<ShareLink> SortedLinks => shareSort switch
-    {
-        ShareSortOptions.Newest => links.OrderByDescending(link => link.CreatedUtc),
-        ShareSortOptions.Oldest => links.OrderBy(link => link.CreatedUtc),
-        ShareSortOptions.Latest => links.OrderByDescending(link => link.ExpiresUtc)
-            .ThenByDescending(link => link.CreatedUtc),
-        ShareSortOptions.Channel => links.OrderBy(link => link.ChannelName, StringComparer.OrdinalIgnoreCase)
-            .ThenByDescending(link => link.CreatedUtc),
-        ShareSortOptions.ChannelDescending => links.OrderByDescending(link => link.ChannelName, StringComparer.OrdinalIgnoreCase)
-            .ThenByDescending(link => link.CreatedUtc),
-        ShareSortOptions.Category => links.OrderBy(link => link.CategoryName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(link => link.ChannelName, StringComparer.OrdinalIgnoreCase)
-            .ThenByDescending(link => link.CreatedUtc),
-        ShareSortOptions.CategoryDescending => links.OrderByDescending(link => link.CategoryName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(link => link.ChannelName, StringComparer.OrdinalIgnoreCase)
-            .ThenByDescending(link => link.CreatedUtc),
-        _ => links.OrderBy(link => link.ExpiresUtc)
-    };
+    private IEnumerable<ShareLink> SortedLinks => ShareSortOptions.Sort(links, shareSort);
 
     protected override async Task OnInitializedAsync()
     {
@@ -154,7 +137,7 @@ else
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Could not update expiration for share {ShareToken}.", token);
+            Logger.LogError(exception, "Could not update share expiration.");
             pageMessage = "The expiration could not be updated. Please try again.";
         }
         finally
