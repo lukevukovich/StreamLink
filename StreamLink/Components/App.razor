@@ -17,6 +17,7 @@
             const themeColors = @((MarkupString)System.Text.Json.JsonSerializer.Serialize(AppThemes.All.ToDictionary(theme => theme.Id, theme => theme.MainColor)));
             const cacheKey = "streamlink.theme";
             const normalizeTheme = (theme) => theme === "jack-o-lantern" ? "halloween" : theme;
+            let currentTheme = null;
             const updateThemeColor = () => {
                 const themeColor = document.querySelector('meta[name="theme-color"]');
                 const background = themeColors[document.documentElement.dataset.theme]
@@ -26,6 +27,7 @@
             const apply = (theme) => {
                 const normalizedTheme = normalizeTheme(theme);
                 const selectedTheme = supportedThemes.includes(normalizedTheme) ? normalizedTheme : "green";
+                currentTheme = selectedTheme;
                 document.documentElement.dataset.theme = selectedTheme;
                 updateThemeColor();
                 return selectedTheme;
@@ -61,7 +63,7 @@
             };
 
             const restoreCachedTheme = () => {
-                const theme = readCachedTheme();
+                const theme = readCachedTheme() ?? currentTheme;
                 return theme ? apply(theme) : null;
             };
 
@@ -188,7 +190,7 @@
         };
     </script>
     <script src="_framework/blazor.web.js" autostart="false"></script>
-    <script src="js/reconnect.js?v=2"></script>
+    <script src="js/reconnect.js?v=3"></script>
 </body>
 
 </html>
