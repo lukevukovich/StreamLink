@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddFilter("System.Net.Http.HttpClient.Xtream", LogLevel.Warning);
 builder.Logging.AddFilter("System.Net.Http.HttpClient.ExternalLinkRedirect", LogLevel.Warning);
 builder.Logging.AddFilter("System.Net.Http.HttpClient.ChannelLogo", LogLevel.None);
+builder.Logging.AddFilter("System.Net.Http.HttpClient.PublicChannelLogo", LogLevel.None);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -65,6 +66,16 @@ builder.Services.AddHttpClient("ChannelLogo", client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd("StreamLink/1.0");
 })
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
+builder.Services.AddHttpClient("PublicChannelLogo", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(8);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("StreamLink/1.0");
+})
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        AllowAutoRedirect = false, UseCookies = false, UseProxy = false,
+        ConnectCallback = PublicImageConnection.ConnectAsync
+    });
 builder.Services.AddDbContextFactory<StreamLinkDbContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("StreamLink") ?? "Data Source=streamlink.db"));
 builder.Services.AddScoped<SessionState>();
 builder.Services.AddScoped<SessionPersistence>();

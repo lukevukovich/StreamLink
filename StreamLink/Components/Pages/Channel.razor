@@ -19,7 +19,7 @@ else
         <div>
             <div class="eyebrow">NOW AVAILABLE</div>
             <div class="channel-title">
-                <ChannelLogo LogoUrl="@ChannelLogoUrl.Resolve(Session.Session.ServerUrl, selectedChannel?.LogoUrl)" CssClass="channel-title-logo" />
+                <ChannelLogo LogoUrl="@ChannelLogoUrl.Resolve(Session.Session.ServerUrl, selectedChannel?.LogoUrl)" ProviderUrl="@Session.Session.ServerUrl" AllowHttpFallback="@(ChannelLogoUrl.ResolveForShare(Session.Session, selectedChannel?.LogoUrl) is not null)" CssClass="channel-title-logo" />
                 <h1>@ChannelName</h1>
             </div>
             <p class="muted detail-subtitle"><span class="live-dot">LIVE</span><span>@CategoryName · Stream @StreamId</span></p>
