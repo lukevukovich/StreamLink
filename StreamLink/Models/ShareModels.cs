@@ -21,6 +21,6 @@ public sealed class ThemePreference
     public string ShareSort { get; set; } = "newest";
 }
 
-public sealed record SharePlayback(ShareLink Link, string StreamUrl);
+public sealed record SharePlayback(ShareLink Link, string StreamUrl, string? LogoUrl = null);
 
 public sealed record ShareCreationResult(ShareLink Link, bool Reused);

@@ -88,6 +88,41 @@ public class ShareTests : IDisposable
         Assert.Equal(1, await db.ShareLinks.CountAsync());
     }
 
+    [Theory]
+    [InlineData("/icons/channel.png", "https://provider.example:8443/icons/channel.png")]
+    [InlineData("https://cdn.example/channel.webp", "https://cdn.example/channel.webp")]
+    [InlineData("https://cdn.example/channel.png?token=secret", null)]
+    [InlineData("https://cdn.example/channel.png#fragment", null)]
+    [InlineData("https://cdn.example/user%2520name/channel.png", null)]
+    [InlineData("https://cdn.example/p%2540ss%2520word/channel.png", null)]
+    [InlineData("https://user:pass@cdn.example/channel.png", null)]
+    [InlineData("data:image/png;base64,abc", null)]
+    public async Task Playback_ExposesOnlyShareableLogoUrls(string input, string? expected)
+    {
+        var (service, _, _) = TestSupport.Shares(database);
+        var channel = Channel(1);
+        channel.LogoUrl = input;
+
+        var link = await service.CreateAsync(TestSupport.Session(), "owner", channel, "News", 1);
+        Assert.DoesNotContain(input, link.ProtectedHlsUrl!);
+        Assert.Equal(expected, (await service.GetPlaybackAsync(link.Token))!.LogoUrl);
+
+        await service.RevokeAsync(link.Token, "owner");
+        Assert.Null(await service.GetPlaybackAsync(link.Token));
+    }
+
+    [Fact]
+    public void ShareLogo_RejectsCredentialsInHost()
+    {
+        var session = TestSupport.Session();
+        session = new XtreamSession
+        {
+            ServerUrl = session.ServerUrl, Username = "viewer123", Password = "securepassword", UserInfo = session.UserInfo
+        };
+        Assert.Null(ChannelLogoUrl.ResolveForShare(session, "https://viewer123.cdn.example/channel.png"));
+        Assert.Null(ChannelLogoUrl.ResolveForShare(session, "https://securepassword.cdn.example/channel.png"));
+    }
+
     [Fact]
     public async Task Shares_IsolateOwnersAndEnforceActiveLimit()
     {
@@ -192,6 +227,15 @@ public class ShareTests : IDisposable
             await db.SaveChangesAsync();
         }
         Assert.Equal("https://legacy.example/live/u/p/1.ts", (await service.GetPlaybackAsync(link.Token))!.StreamUrl);
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            var saved = await db.ShareLinks.SingleAsync();
+            saved.ProtectedHlsUrl = persistence.ProtectString("{\"HlsUrl\":\"https://legacy.example/live/u/p/1.m3u8\",\"TsUrl\":null}");
+            await db.SaveChangesAsync();
+        }
+        var legacy = await service.GetPlaybackAsync(link.Token);
+        Assert.Equal("https://legacy.example/live/u/p/1.m3u8", legacy!.StreamUrl);
+        Assert.Null(legacy.LogoUrl);
         await using (var db = await factory.CreateDbContextAsync())
         {
             var saved = await db.ShareLinks.SingleAsync();

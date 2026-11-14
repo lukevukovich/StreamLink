@@ -19,7 +19,11 @@ else
         <div class="channel-list">
             @foreach (var channel in filteredChannels)
             {
-                <button class="channel-row" @onclick="() => OpenChannel(channel)"><span class="channel-logo">@if (!string.IsNullOrWhiteSpace(channel.LogoUrl)) { <img src="@channel.LogoUrl" alt="" /> } else { <span>TV</span> }</span><span class="channel-copy"><strong>@channel.Name</strong><small>Live channel</small></span><span class="chevron">›</span></button>
+                var logoUrl = ChannelLogoUrl.Resolve(Session.Session.ServerUrl, channel.LogoUrl);
+                <button @key="channel" class="channel-row" @onclick="() => OpenChannel(channel)">
+                    <ChannelLogo LogoUrl="@logoUrl" />
+                    <span class="channel-copy"><strong>@channel.Name</strong><small>Live channel</small></span><span class="chevron">›</span>
+                </button>
             }
         </div>
     }

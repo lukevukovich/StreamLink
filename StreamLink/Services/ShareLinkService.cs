@@ -52,7 +52,8 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
 
             var streamLinks = streamUrls.BuildLinks(session, channel.StreamId);
             if (!streamLinks.HlsAllowed && !streamLinks.TsAllowed) throw new InvalidOperationException("No supported stream format is allowed for this account.");
-            var sources = new ShareSources(streamLinks.HlsAllowed ? streamLinks.HlsUrl : null, streamLinks.TsAllowed ? streamLinks.TsUrl : null);
+            var sources = new ShareSources(streamLinks.HlsAllowed ? streamLinks.HlsUrl : null, streamLinks.TsAllowed ? streamLinks.TsUrl : null,
+                ChannelLogoUrl.ResolveForShare(session, channel.LogoUrl));
             var link = new ShareLink { Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(18)).ToLowerInvariant(), ChannelName = channel.Name, CategoryName = categoryName, StreamId = channel.StreamId, CreatedUtc = now, ExpiresUtc = now.AddHours(expirationHours), OwnerKey = ownerKey, ProtectedHlsUrl = persistence.ProtectString(JsonSerializer.Serialize(sources)) };
             await db.ShareLinks.AddAsync(link, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
@@ -104,12 +105,12 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
         var sources = JsonSerializer.Deserialize<ShareSources>(saved);
         if (sources is null) return null;
         var primary = sources.HlsUrl ?? sources.TsUrl;
-        return IsProviderUrl(primary) ? new SharePlayback(link, primary!) : null;
+        return IsProviderUrl(primary) ? new SharePlayback(link, primary!, sources.LogoUrl) : null;
     }
     public async Task RevokeAsync(string token, string ownerKey, CancellationToken cancellationToken = default)
     { await using var db = await dbFactory.CreateDbContextAsync(cancellationToken); var link = await db.ShareLinks.SingleOrDefaultAsync(x => x.Token == token && x.OwnerKey == ownerKey, cancellationToken); if (link is not null) { link.Revoked = true; await db.SaveChangesAsync(cancellationToken); } }
 
-    private sealed record ShareSources(string? HlsUrl, string? TsUrl);
+    private sealed record ShareSources(string? HlsUrl, string? TsUrl, string? LogoUrl = null);
 
     private static bool IsProviderUrl(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" &&
