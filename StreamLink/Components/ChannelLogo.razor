@@ -14,27 +14,34 @@
     [Parameter] public string? CssClass { get; set; }
     [Parameter] public bool Deferred { get; set; }
     [Parameter] public bool RequireProxy { get; set; }
+    [Parameter] public string? ProviderUrl { get; set; }
+    [Parameter] public bool AllowHttpFallback { get; set; }
     private string? previousLogoUrl;
+    private string? previousProviderUrl;
     private bool previousDeferred;
     private bool previousRequireProxy;
+    private bool previousAllowHttpFallback;
     private bool initialized;
     private string? source;
     private int revision;
 
     protected override void OnParametersSet()
     {
-        if (initialized && LogoUrl == previousLogoUrl && Deferred == previousDeferred && RequireProxy == previousRequireProxy) return;
+        if (initialized && LogoUrl == previousLogoUrl && ProviderUrl == previousProviderUrl &&
+            Deferred == previousDeferred && RequireProxy == previousRequireProxy && AllowHttpFallback == previousAllowHttpFallback) return;
         initialized = true;
         previousLogoUrl = LogoUrl;
+        previousProviderUrl = ProviderUrl;
         previousDeferred = Deferred;
         previousRequireProxy = RequireProxy;
-        source = Deferred ? null : LogoProxy.GetSource(LogoUrl, RequireProxy);
+        previousAllowHttpFallback = AllowHttpFallback;
+        source = Deferred ? null : LogoProxy.GetSource(LogoUrl, RequireProxy, ProviderUrl, AllowHttpFallback);
         revision++;
     }
 
     private void LoadVisible()
     {
-        source = LogoProxy.GetSource(LogoUrl, RequireProxy);
+        source = LogoProxy.GetSource(LogoUrl, RequireProxy, ProviderUrl, AllowHttpFallback);
         revision++;
     }
 }

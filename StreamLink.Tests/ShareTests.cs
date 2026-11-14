@@ -109,6 +109,7 @@ public class ShareTests : IDisposable
         var playback = await service.GetPlaybackAsync(link.Token);
         Assert.Equal(expected, playback!.LogoUrl);
         Assert.Equal(requiresProxy, playback.LogoRequiresProxy);
+        Assert.Equal(TestSupport.Session().ServerUrl, playback.ProviderUrl);
 
         await service.RevokeAsync(link.Token, "owner");
         Assert.Null(await service.GetPlaybackAsync(link.Token));
@@ -285,6 +286,7 @@ public class ShareTests : IDisposable
         var legacy = await service.GetPlaybackAsync(link.Token);
         Assert.Equal("https://legacy.example/live/u/p/1.m3u8", legacy!.StreamUrl);
         Assert.Null(legacy.LogoUrl);
+        Assert.Equal("https://legacy.example", legacy.ProviderUrl);
         await using (var db = await factory.CreateDbContextAsync())
         {
             var saved = await db.ShareLinks.SingleAsync();

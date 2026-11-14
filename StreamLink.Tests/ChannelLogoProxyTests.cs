@@ -67,6 +67,84 @@ public class ChannelLogoProxyTests
         Assert.Equal(url, handler.Requests.Single().AbsoluteUri);
     }
 
+    [Fact]
+    public async Task ProviderLogo_OnDifferentHost_RetriesHttpAfterTlsFailure()
+    {
+        var handler = new StubHandler(request =>
+        {
+            if (request.RequestUri!.Scheme == "https")
+                throw new HttpRequestException(HttpRequestError.SecureConnectionError, "TLS handshake failed");
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })
+            };
+        });
+        var clients = new StubClients(handler);
+        var proxy = new ChannelLogoProxy(TestSupport.Protection(), Policy("https://provider.example"), clients);
+        var source = proxy.GetSource("https://images.example:2086/logo.png", providerUrl: "https://provider.example",
+            allowHttpFallback: true)!;
+
+        Assert.StartsWith("/channel-logo/", source);
+        Assert.NotNull(await proxy.FetchAsync(source["/channel-logo/".Length..], CancellationToken.None));
+        Assert.Equal(new[] { "https://images.example:2086/logo.png", "http://images.example:2086/logo.png" },
+            handler.Requests.Select(uri => uri.AbsoluteUri));
+        Assert.Equal("PublicChannelLogo", clients.LastName);
+    }
+
+    [Theory]
+    [InlineData("https://images.example/logo.png?token=secret", true)]
+    [InlineData("https://images.example/logo.png", false)]
+    public async Task ProviderLogo_DoesNotDowngradeSensitiveOrDisallowedUrls(string url, bool fallback)
+    {
+        var handler = new StubHandler(_ => throw new HttpRequestException(HttpRequestError.SecureConnectionError, "TLS failed"));
+        var proxy = new ChannelLogoProxy(TestSupport.Protection(), Policy("https://provider.example"), new StubClients(handler));
+        var source = proxy.GetSource(url, providerUrl: "https://provider.example", allowHttpFallback: fallback)!;
+
+        await Assert.ThrowsAsync<ChannelLogoFetchException>(() => proxy.FetchAsync(source["/channel-logo/".Length..], CancellationToken.None));
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task ProviderLogo_StopsWorkingWhenProviderIsRemoved()
+    {
+        var protection = TestSupport.Protection();
+        var handler = new StubHandler(_ => throw new InvalidOperationException("Unexpected request"));
+        var allowed = new ChannelLogoProxy(protection, Policy("https://provider.example"), new StubClients(handler));
+        var denied = new ChannelLogoProxy(protection, Policy(), new StubClients(handler));
+        var source = allowed.GetSource("https://images.example/logo.png", providerUrl: "https://provider.example")!;
+        Assert.Null(await denied.FetchAsync(source["/channel-logo/".Length..], CancellationToken.None));
+        Assert.Empty(handler.Requests);
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1", false)]
+    [InlineData("10.0.0.1", false)]
+    [InlineData("100.64.0.1", false)]
+    [InlineData("169.254.169.254", false)]
+    [InlineData("172.31.0.1", false)]
+    [InlineData("192.168.1.1", false)]
+    [InlineData("198.18.0.1", false)]
+    [InlineData("203.0.113.1", false)]
+    [InlineData("8.8.8.8", true)]
+    [InlineData("::1", false)]
+    [InlineData("::ffff:127.0.0.1", false)]
+    [InlineData("fc00::1", false)]
+    [InlineData("fe80::1", false)]
+    [InlineData("2001:db8::1", false)]
+    [InlineData("2002:0808:0808::1", false)]
+    [InlineData("2606:4700:4700::1111", true)]
+    public void PublicImageDestinations_ExcludeNonPublicAddresses(string address, bool expected) =>
+        Assert.Equal(expected, PublicImageConnection.IsPublic(IPAddress.Parse(address)));
+
+    [Fact]
+    public async Task PublicImageClient_RejectsLoopbackBeforeConnecting()
+    {
+        using var handler = new SocketsHttpHandler { UseProxy = false, ConnectCallback = PublicImageConnection.ConnectAsync };
+        using var client = new HttpClient(handler);
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("http://127.0.0.1:1/logo.png"));
+        Assert.Contains("No permitted public image destination", exception.ToString());
+    }
+
     [Theory]
     [InlineData("redirect")]
     [InlineData("oversized")]

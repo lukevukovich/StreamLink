@@ -21,7 +21,7 @@ else
             {
                 var logoUrl = ChannelLogoUrl.Resolve(Session.Session.ServerUrl, channel.LogoUrl);
                 <button @key="channel" class="channel-row" @onclick="() => OpenChannel(channel)">
-                    <ChannelLogo @key="Search" LogoUrl="@logoUrl" Deferred="true" />
+                    <ChannelLogo @key="Search" LogoUrl="@logoUrl" ProviderUrl="@Session.Session.ServerUrl" AllowHttpFallback="@(ChannelLogoUrl.ResolveForShare(Session.Session, channel.LogoUrl) is not null)" Deferred="true" />
                     <span class="channel-copy"><strong>@channel.Name</strong><small>Live channel</small></span><span class="chevron">›</span>
                 </button>
             }
