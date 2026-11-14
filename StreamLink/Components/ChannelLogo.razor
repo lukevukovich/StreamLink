@@ -1,20 +1,40 @@
 @inject ChannelLogoProxy LogoProxy
 
 <span class="channel-logo @CssClass">
-    @if (source is not null) { <img @key="source" src="@source" alt="" onload="this.classList.add('loaded')" onerror="this.classList.remove('loaded')" /> }
+    @if (LogoUrl is not null)
+    {
+        <img @key="revision" src="@source" alt="" data-channel-logo data-deferred-logo="@(Deferred ? "" : null)" @onlogonear="LoadVisible"
+             onload="this.classList.add('loaded')" onerror="this.classList.remove('loaded')" />
+    }
     <span>TV</span>
 </span>
 
 @code {
     [Parameter] public string? LogoUrl { get; set; }
     [Parameter] public string? CssClass { get; set; }
+    [Parameter] public bool Deferred { get; set; }
+    [Parameter] public bool RequireProxy { get; set; }
     private string? previousLogoUrl;
+    private bool previousDeferred;
+    private bool previousRequireProxy;
+    private bool initialized;
     private string? source;
+    private int revision;
 
     protected override void OnParametersSet()
     {
-        if (LogoUrl == previousLogoUrl) return;
+        if (initialized && LogoUrl == previousLogoUrl && Deferred == previousDeferred && RequireProxy == previousRequireProxy) return;
+        initialized = true;
         previousLogoUrl = LogoUrl;
-        source = LogoProxy.GetSource(LogoUrl);
+        previousDeferred = Deferred;
+        previousRequireProxy = RequireProxy;
+        source = Deferred ? null : LogoProxy.GetSource(LogoUrl, RequireProxy);
+        revision++;
+    }
+
+    private void LoadVisible()
+    {
+        source = LogoProxy.GetSource(LogoUrl, RequireProxy);
+        revision++;
     }
 }

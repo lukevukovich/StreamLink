@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using StreamLink.Data;
 using StreamLink.Models;
 using StreamLink.Services;
@@ -38,7 +39,7 @@ internal static class TestSupport
         var factory = new SimpleDbFactory(options);
         using (var db = factory.CreateDbContext()) db.Database.EnsureCreated();
         var persistence = new SessionPersistence(Protection());
-        return (new ShareLinkService(factory, new StreamUrlService(ProviderPolicy()), persistence, ShareConfiguration()), factory, persistence);
+        return (new ShareLinkService(factory, new StreamUrlService(ProviderPolicy()), persistence, ShareConfiguration(), NullLogger<ShareLinkService>.Instance), factory, persistence);
     }
 }
 

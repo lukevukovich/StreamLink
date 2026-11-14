@@ -11,12 +11,14 @@ public sealed class ChannelLogoProxy(IDataProtectionProvider protection, Provide
     private readonly ITimeLimitedDataProtector grants = protection.CreateProtector("channel-logo-v1").ToTimeLimitedDataProtector();
     private readonly SemaphoreSlim slots = new(12, 12);
 
-    public string? GetSource(string? logoUrl)
+    public string? GetSource(string? logoUrl, bool requireProxy = false)
     {
         if (logoUrl is null || logoUrl.Length > 4096 ||
             !Uri.TryCreate(logoUrl, UriKind.Absolute, out var uri) ||
-            uri.Scheme != Uri.UriSchemeHttp || !providerAccess.IsAllowed(uri))
-            return logoUrl;
+            !providerAccess.IsAllowed(uri))
+            return requireProxy ? null : logoUrl;
+
+        if (uri.Scheme != Uri.UriSchemeHttp && !requireProxy) return logoUrl;
 
         return $"/channel-logo/{grants.Protect(uri.AbsoluteUri, TimeSpan.FromHours(1))}";
     }
@@ -27,8 +29,7 @@ public sealed class ChannelLogoProxy(IDataProtectionProvider protection, Provide
         string source;
         try { source = grants.Unprotect(grant); }
         catch (Exception exception) when (exception is CryptographicException or FormatException or ArgumentException) { return null; }
-        if (!Uri.TryCreate(source, UriKind.Absolute, out var uri) ||
-            uri.Scheme != Uri.UriSchemeHttp || !providerAccess.IsAllowed(uri))
+        if (!Uri.TryCreate(source, UriKind.Absolute, out var uri) || !providerAccess.IsAllowed(uri))
             return null;
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

@@ -7,7 +7,7 @@ using StreamLink.Models;
 
 namespace StreamLink.Services;
 
-public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFactory, IStreamUrlService streamUrls, SessionPersistence persistence, IConfiguration configuration) : IShareLinkService
+public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFactory, IStreamUrlService streamUrls, SessionPersistence persistence, IConfiguration configuration, ILogger<ShareLinkService> logger) : IShareLinkService
 {
     private readonly int maxActiveLinksPerOwner = ReadMaxActiveLinksPerOwner(configuration);
 
@@ -35,10 +35,29 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
             await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var now = DateTime.UtcNow;
+            var (logoUrl, logoRequiresProxy) = GetShareLogo(session, channel.LogoUrl);
             var existing = await db.ShareLinks.Where(x => x.OwnerKey == ownerKey && x.StreamId == channel.StreamId && !x.Revoked && x.ExpiresUtc > now)
                 .OrderByDescending(x => x.CreatedUtc).FirstOrDefaultAsync(cancellationToken);
             if (existing is not null)
             {
+                if (logoUrl is not null)
+                {
+                    var saved = persistence.UnprotectString(existing.ProtectedHlsUrl);
+                    ShareSources? prior = null;
+                    if (!string.IsNullOrWhiteSpace(saved))
+                    {
+                        try { prior = saved.StartsWith('{') ? JsonSerializer.Deserialize<ShareSources>(saved) : new ShareSources(saved, null); }
+                        catch (JsonException) { logger.LogWarning("An existing share's image could not be updated because its source is invalid."); }
+                    }
+                    else
+                        logger.LogWarning("An existing share's image could not be updated because its source could not be restored.");
+                    if (prior is not null && IsProviderUrl(prior.HlsUrl ?? prior.TsUrl) &&
+                        (prior.LogoUrl != logoUrl || prior.LogoRequiresProxy != logoRequiresProxy))
+                    {
+                        existing.ProtectedHlsUrl = persistence.ProtectString(JsonSerializer.Serialize(prior with { LogoUrl = logoUrl, LogoRequiresProxy = logoRequiresProxy }));
+                        await db.SaveChangesAsync(cancellationToken);
+                    }
+                }
                 await transaction.CommitAsync(cancellationToken);
                 return new(existing, true);
             }
@@ -53,7 +72,7 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
             var streamLinks = streamUrls.BuildLinks(session, channel.StreamId);
             if (!streamLinks.HlsAllowed && !streamLinks.TsAllowed) throw new InvalidOperationException("No supported stream format is allowed for this account.");
             var sources = new ShareSources(streamLinks.HlsAllowed ? streamLinks.HlsUrl : null, streamLinks.TsAllowed ? streamLinks.TsUrl : null,
-                ChannelLogoUrl.ResolveForShare(session, channel.LogoUrl));
+                logoUrl, logoRequiresProxy);
             var link = new ShareLink { Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(18)).ToLowerInvariant(), ChannelName = channel.Name, CategoryName = categoryName, StreamId = channel.StreamId, CreatedUtc = now, ExpiresUtc = now.AddHours(expirationHours), OwnerKey = ownerKey, ProtectedHlsUrl = persistence.ProtectString(JsonSerializer.Serialize(sources)) };
             await db.ShareLinks.AddAsync(link, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
@@ -105,12 +124,21 @@ public sealed class ShareLinkService(IDbContextFactory<StreamLinkDbContext> dbFa
         var sources = JsonSerializer.Deserialize<ShareSources>(saved);
         if (sources is null) return null;
         var primary = sources.HlsUrl ?? sources.TsUrl;
-        return IsProviderUrl(primary) ? new SharePlayback(link, primary!, sources.LogoUrl) : null;
+        return IsProviderUrl(primary) ? new SharePlayback(link, primary!, sources.LogoUrl, sources.LogoRequiresProxy) : null;
     }
     public async Task RevokeAsync(string token, string ownerKey, CancellationToken cancellationToken = default)
     { await using var db = await dbFactory.CreateDbContextAsync(cancellationToken); var link = await db.ShareLinks.SingleOrDefaultAsync(x => x.Token == token && x.OwnerKey == ownerKey, cancellationToken); if (link is not null) { link.Revoked = true; await db.SaveChangesAsync(cancellationToken); } }
 
-    private sealed record ShareSources(string? HlsUrl, string? TsUrl, string? LogoUrl = null);
+    private static (string? Url, bool RequiresProxy) GetShareLogo(XtreamSession session, string? logoUrl)
+    {
+        var direct = ChannelLogoUrl.ResolveForShare(session, logoUrl);
+        if (direct is not null) return (direct, false);
+        var resolved = ChannelLogoUrl.Resolve(session.ServerUrl, logoUrl);
+        return IsProviderUrl(resolved) && Uri.TryCreate(resolved, UriKind.Absolute, out var uri) && string.IsNullOrEmpty(uri.Fragment)
+            ? (resolved, true) : (null, false);
+    }
+
+    private sealed record ShareSources(string? HlsUrl, string? TsUrl, string? LogoUrl = null, bool LogoRequiresProxy = false);
 
     private static bool IsProviderUrl(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" &&
