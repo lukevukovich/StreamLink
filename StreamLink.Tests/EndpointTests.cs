@@ -39,6 +39,46 @@ public class EndpointTests : IClassFixture<EndpointFactory>
     }
 
     [Fact]
+    public void LogoClient_DoesNotFollowRedirectsOrUseCookies()
+    {
+        using var handler = factory.Services.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler("ChannelLogo");
+        HttpMessageHandler current = handler;
+        while (current is DelegatingHandler delegating)
+            current = delegating.InnerHandler!;
+        var clientHandler = Assert.IsType<HttpClientHandler>(current);
+        Assert.False(clientHandler.AllowAutoRedirect);
+        Assert.False(clientHandler.UseCookies);
+    }
+
+    [Fact]
+    public async Task LogoEndpoint_SandboxesImagesAndRejectsInvalidGrants()
+    {
+        using var app = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ProviderSecurity:AllowedOrigins:2"] = "http://provider.example"
+            }));
+            builder.ConfigureTestServices(services => services.AddHttpClient("ChannelLogo")
+                .ConfigurePrimaryHttpMessageHandler(() => new StubHandler(_ =>
+                {
+                    var content = new StringContent("<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/svg+xml");
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+                })));
+        });
+        using var client = app.CreateClient();
+        var source = app.Services.GetRequiredService<ChannelLogoProxy>().GetSource("http://provider.example/logo.svg")!;
+        using var response = await client.GetAsync(source);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/svg+xml", response.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Contains("sandbox", response.Headers.GetValues("Content-Security-Policy").Single());
+        Assert.Contains("no-store", response.Headers.CacheControl!.ToString());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/channel-logo/invalid")).StatusCode);
+    }
+
+    [Fact]
     public async Task XtreamClient_DoesNotFollowProviderRedirect()
     {
         var builder = WebApplication.CreateBuilder();

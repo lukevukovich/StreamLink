@@ -1,0 +1,17 @@
+@inject IJSRuntime Js
+
+<input @ref="input" class="search @CssClass" placeholder="@Placeholder" aria-label="@Placeholder" data-catalog-search @onchange="SearchChanged" />
+
+@code {
+    [Parameter, EditorRequired] public string Placeholder { get; set; } = "";
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter, EditorRequired] public EventCallback<string?> OnSearch { get; set; }
+    private ElementReference input;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await Js.InvokeVoidAsync("streamlinkSearch.initialize", input);
+    }
+
+    private Task SearchChanged(ChangeEventArgs args) => OnSearch.InvokeAsync(args.Value?.ToString());
+}

@@ -1,9 +1,20 @@
+@inject ChannelLogoProxy LogoProxy
+
 <span class="channel-logo @CssClass">
-    @if (LogoUrl is not null) { <img @key="LogoUrl" src="@LogoUrl" alt="" onerror="this.hidden = true" /> }
+    @if (source is not null) { <img @key="source" src="@source" alt="" onload="this.classList.add('loaded')" onerror="this.classList.remove('loaded')" /> }
     <span>TV</span>
 </span>
 
 @code {
     [Parameter] public string? LogoUrl { get; set; }
     [Parameter] public string? CssClass { get; set; }
+    private string? previousLogoUrl;
+    private string? source;
+
+    protected override void OnParametersSet()
+    {
+        if (LogoUrl == previousLogoUrl) return;
+        previousLogoUrl = LogoUrl;
+        source = LogoProxy.GetSource(LogoUrl);
+    }
 }
