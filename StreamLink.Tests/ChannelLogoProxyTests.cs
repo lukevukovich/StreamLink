@@ -47,6 +47,26 @@ public class ChannelLogoProxyTests
         Assert.Empty(handler.Requests);
     }
 
+    [Fact]
+    public async Task SensitiveShareLogo_RequiresAnApprovedOriginAndHidesItsUrl()
+    {
+        var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })
+        });
+        var protection = TestSupport.Protection();
+        const string url = "https://cdn.example/logo.png?token=secret";
+        var allowed = new ChannelLogoProxy(protection, Policy("https://cdn.example"), new StubClients(handler));
+        var denied = new ChannelLogoProxy(protection, Policy(), new StubClients(handler));
+        var source = allowed.GetSource(url, requireProxy: true)!;
+
+        Assert.StartsWith("/channel-logo/", source);
+        Assert.DoesNotContain("secret", source);
+        Assert.Null(denied.GetSource(url, requireProxy: true));
+        Assert.NotNull(await allowed.FetchAsync(source["/channel-logo/".Length..], CancellationToken.None));
+        Assert.Equal(url, handler.Requests.Single().AbsoluteUri);
+    }
+
     [Theory]
     [InlineData("redirect")]
     [InlineData("oversized")]

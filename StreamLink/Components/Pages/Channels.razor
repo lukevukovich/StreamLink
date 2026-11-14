@@ -21,7 +21,7 @@ else
             {
                 var logoUrl = ChannelLogoUrl.Resolve(Session.Session.ServerUrl, channel.LogoUrl);
                 <button @key="channel" class="channel-row" @onclick="() => OpenChannel(channel)">
-                    <ChannelLogo LogoUrl="@logoUrl" />
+                    <ChannelLogo @key="Search" LogoUrl="@logoUrl" Deferred="true" />
                     <span class="channel-copy"><strong>@channel.Name</strong><small>Live channel</small></span><span class="chevron">›</span>
                 </button>
             }

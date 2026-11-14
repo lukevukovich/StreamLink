@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using StreamLink.Services;
 using StreamLink.Models;
 
@@ -89,15 +90,15 @@ public class ShareTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/icons/channel.png", "https://provider.example:8443/icons/channel.png")]
-    [InlineData("https://cdn.example/channel.webp", "https://cdn.example/channel.webp")]
-    [InlineData("https://cdn.example/channel.png?token=secret", null)]
-    [InlineData("https://cdn.example/channel.png#fragment", null)]
-    [InlineData("https://cdn.example/user%2520name/channel.png", null)]
-    [InlineData("https://cdn.example/p%2540ss%2520word/channel.png", null)]
-    [InlineData("https://user:pass@cdn.example/channel.png", null)]
-    [InlineData("data:image/png;base64,abc", null)]
-    public async Task Playback_ExposesOnlyShareableLogoUrls(string input, string? expected)
+    [InlineData("/icons/channel.png", "https://provider.example:8443/icons/channel.png", false)]
+    [InlineData("https://cdn.example/channel.webp", "https://cdn.example/channel.webp", false)]
+    [InlineData("https://cdn.example/channel.png?token=secret", "https://cdn.example/channel.png?token=secret", true)]
+    [InlineData("https://cdn.example/channel.png#fragment", null, false)]
+    [InlineData("https://cdn.example/user%2520name/channel.png", "https://cdn.example/user%2520name/channel.png", true)]
+    [InlineData("https://cdn.example/p%2540ss%2520word/channel.png", "https://cdn.example/p%2540ss%2520word/channel.png", true)]
+    [InlineData("https://user:pass@cdn.example/channel.png", null, false)]
+    [InlineData("data:image/png;base64,abc", null, false)]
+    public async Task Playback_ProtectsSensitiveLogoUrls(string input, string? expected, bool requiresProxy)
     {
         var (service, _, _) = TestSupport.Shares(database);
         var channel = Channel(1);
@@ -105,10 +106,58 @@ public class ShareTests : IDisposable
 
         var link = await service.CreateAsync(TestSupport.Session(), "owner", channel, "News", 1);
         Assert.DoesNotContain(input, link.ProtectedHlsUrl!);
-        Assert.Equal(expected, (await service.GetPlaybackAsync(link.Token))!.LogoUrl);
+        var playback = await service.GetPlaybackAsync(link.Token);
+        Assert.Equal(expected, playback!.LogoUrl);
+        Assert.Equal(requiresProxy, playback.LogoRequiresProxy);
 
         await service.RevokeAsync(link.Token, "owner");
         Assert.Null(await service.GetPlaybackAsync(link.Token));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReusingShare_AddsMissingLogoWithoutChangingLinkOrStream(bool legacySource)
+    {
+        var (service, factory, persistence) = TestSupport.Shares(database);
+        var original = await service.CreateAsync(TestSupport.Session(), "owner", Channel(1), "News", 4);
+        if (legacySource)
+        {
+            await using var db = await factory.CreateDbContextAsync();
+            var stored = await db.ShareLinks.SingleAsync();
+            stored.ProtectedHlsUrl = persistence.ProtectString("https://provider.example/live/u/p/1.ts");
+            await db.SaveChangesAsync();
+        }
+        var before = (await service.GetPlaybackAsync(original.Token))!.StreamUrl;
+        var channel = Channel(1);
+        channel.LogoUrl = "https://cdn.example/logo.png?token=secret";
+
+        var reused = await service.CreateOrReuseAsync(TestSupport.Session(), "owner", channel, "News", 8);
+        var playback = await service.GetPlaybackAsync(original.Token);
+        Assert.True(reused.Reused);
+        Assert.Equal(original.Token, reused.Link.Token);
+        Assert.Equal(original.ExpiresUtc, reused.Link.ExpiresUtc);
+        Assert.Equal(before, playback!.StreamUrl);
+        Assert.Equal(channel.LogoUrl, playback.LogoUrl);
+        Assert.True(playback.LogoRequiresProxy);
+    }
+
+    [Fact]
+    public async Task ReusingShare_RefreshesChangedLogo()
+    {
+        var (service, _, _) = TestSupport.Shares(database);
+        var channel = Channel(1);
+        channel.LogoUrl = "https://cdn.example/old.png";
+        var original = await service.CreateAsync(TestSupport.Session(), "owner", channel, "News", 4);
+        channel.LogoUrl = "https://cdn.example/new.png?token=secret";
+
+        var reused = await service.CreateOrReuseAsync(TestSupport.Session(), "owner", channel, "News", 8);
+        var playback = await service.GetPlaybackAsync(original.Token);
+        Assert.True(reused.Reused);
+        Assert.Equal(original.Token, reused.Link.Token);
+        Assert.Equal(original.ExpiresUtc, reused.Link.ExpiresUtc);
+        Assert.Equal(channel.LogoUrl, playback!.LogoUrl);
+        Assert.True(playback.LogoRequiresProxy);
     }
 
     [Fact]
@@ -150,7 +199,7 @@ public class ShareTests : IDisposable
         {
             ["ShareLinks:MaxActivePerOwner"] = "2"
         }).Build();
-        var service = new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, config);
+        var service = new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, config, NullLogger<ShareLinkService>.Instance);
         await using (var db = await factory.CreateDbContextAsync())
         {
             db.ShareLinks.AddRange(
@@ -166,10 +215,10 @@ public class ShareTests : IDisposable
         foreach (var invalid in new[] { "0", "101", "not-a-number" })
         {
             config["ShareLinks:MaxActivePerOwner"] = invalid;
-            Assert.Throws<InvalidOperationException>(() => new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, config));
+            Assert.Throws<InvalidOperationException>(() => new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, config, NullLogger<ShareLinkService>.Instance));
         }
         config["ShareLinks:MaxActivePerOwner"] = null;
-        Assert.Throws<InvalidOperationException>(() => new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, config));
+        Assert.Throws<InvalidOperationException>(() => new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, config, NullLogger<ShareLinkService>.Instance));
     }
 
     [Fact]
@@ -202,7 +251,7 @@ public class ShareTests : IDisposable
     public async Task Create_EnforcesLimitAcrossServiceInstances()
     {
         var (service, factory, persistence) = TestSupport.Shares(database);
-        var other = new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, shareConfiguration);
+        var other = new ShareLinkService(factory, new StreamUrlService(TestSupport.ProviderPolicy()), persistence, shareConfiguration, NullLogger<ShareLinkService>.Instance);
         var attempts = Enumerable.Range(0, MaxActiveLinks + 6).Select(async id =>
         {
             try { await (id % 2 == 0 ? service : other).CreateAsync(TestSupport.Session(), "owner", Channel(id), "News", 1); }
