@@ -64,7 +64,7 @@ public sealed class ExternalLinkService(IDataProtectionProvider protection, IHtt
         return !string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password);
     }
 
-    private static bool ContainsCredential(Uri uri, string secret)
+    internal static bool ContainsCredential(Uri uri, string secret)
     {
         var text = uri.PathAndQuery;
         for (var i = 0; i < 3; i++)

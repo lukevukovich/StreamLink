@@ -1,0 +1,9 @@
+<span class="channel-logo @CssClass">
+    @if (LogoUrl is not null) { <img @key="LogoUrl" src="@LogoUrl" alt="" onerror="this.hidden = true" /> }
+    <span>TV</span>
+</span>
+
+@code {
+    [Parameter] public string? LogoUrl { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+}

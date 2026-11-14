@@ -15,7 +15,16 @@ else if (!channelFound) { <div class="empty-card">@(loadError ?? "This channel i
 else
 {
     <a class="back-link" href="/tv">← Live TV</a>
-    <section class="detail-hero"><div><div class="eyebrow">NOW AVAILABLE</div><h1>@ChannelName</h1><p class="muted detail-subtitle"><span class="live-dot">LIVE</span><span>@CategoryName · Stream @StreamId</span></p></div></section>
+    <section class="detail-hero">
+        <div>
+            <div class="eyebrow">NOW AVAILABLE</div>
+            <div class="channel-title">
+                <ChannelLogo LogoUrl="@ChannelLogoUrl.Resolve(Session.Session.ServerUrl, selectedChannel?.LogoUrl)" CssClass="channel-title-logo" />
+                <h1>@ChannelName</h1>
+            </div>
+            <p class="muted detail-subtitle"><span class="live-dot">LIVE</span><span>@CategoryName · Stream @StreamId</span></p>
+        </div>
+    </section>
     @if (links is not null && (links.HlsAllowed || links.TsAllowed))
     {
         <ExternalStreamActions Grant="@externalGrant" ChannelName="@ChannelName" />
@@ -68,6 +77,7 @@ else
     private bool channelFound;
     private bool loading = true;
     private string? loadError;
+    private XtreamChannel? selectedChannel;
     private StreamLinks? links; private string? shareUrl; private string? shareError; private bool shareBusy; private bool showShareForm; private bool reusedShare; private int shareHours = 4; private DateTime shareExpiresUtc; private string externalGrant = ""; private int? loadedStreamId;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -89,6 +99,7 @@ else
         channelFound = false;
         loadError = null;
         links = null;
+        selectedChannel = null;
         ChannelName = "Channel";
         CategoryName = "Live TV";
         shareUrl = null;
@@ -101,6 +112,7 @@ else
             if (StreamId != streamId) return;
             if (result is not null)
             {
+                selectedChannel = result.Channel;
                 ChannelName = result.Channel.Name;
                 CategoryName = result.CategoryName;
                 channelFound = true;
@@ -116,14 +128,14 @@ else
     private void CancelShare() { if (!shareBusy) { shareError = null; showShareForm = false; } }
     private async Task CreateShare()
     {
-        if (shareBusy || !showShareForm || shareUrl is not null || Session.Session is null || links is null || (!links.HlsAllowed && !links.TsAllowed)) return;
+        if (shareBusy || !showShareForm || shareUrl is not null || Session.Session is null || selectedChannel is null || links is null || (!links.HlsAllowed && !links.TsAllowed)) return;
         shareBusy = true;
         shareError = null;
         var streamId = StreamId;
         try
         {
             var result = await Shares.CreateOrReuseAsync(Session.Session, Session.OwnerKey,
-                new XtreamChannel { StreamId = streamId, Name = ChannelName }, CategoryName, shareHours);
+                selectedChannel, CategoryName, shareHours);
             var link = result.Link;
             if (StreamId == streamId)
             {

@@ -8,6 +8,20 @@ namespace StreamLink.Tests;
 
 public class StreamAndSessionTests
 {
+    [Theory]
+    [InlineData("https://cdn.example/logo.png", "https://cdn.example/logo.png")]
+    [InlineData("//cdn.example/logo.webp", "https://cdn.example/logo.webp")]
+    [InlineData("/icons/logo.svg", "https://provider.example/icons/logo.svg")]
+    [InlineData("icons/logo.gif", "https://provider.example/base/icons/logo.gif")]
+    [InlineData("data:image/png;base64,abc", "data:image/png;base64,abc")]
+    [InlineData("javascript:alert(1)", null)]
+    [InlineData("https://user:pass@cdn.example/logo.png", null)]
+    [InlineData("", null)]
+    public void ChannelLogo_ResolvesSupportedUrls(string input, string? expected)
+    {
+        Assert.Equal(expected, ChannelLogoUrl.Resolve("https://provider.example/base", input));
+    }
+
     [Fact]
     public void StreamUrls_EscapeCredentialsAndHonorFormats()
     {
