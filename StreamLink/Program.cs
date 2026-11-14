@@ -13,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Xtream credentials may appear in provider URLs. Never emit those URLs to logs.
 builder.Logging.AddFilter("System.Net.Http.HttpClient.Xtream", LogLevel.Warning);
 builder.Logging.AddFilter("System.Net.Http.HttpClient.ExternalLinkRedirect", LogLevel.Warning);
+builder.Logging.AddFilter("System.Net.Http.HttpClient.ChannelLogo", LogLevel.None);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -58,11 +59,18 @@ builder.Services.AddHttpClient("ExternalLinkRedirect", client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd("StreamLink/1.0");
 })
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
+builder.Services.AddHttpClient("ChannelLogo", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(8);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("StreamLink/1.0");
+})
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
 builder.Services.AddDbContextFactory<StreamLinkDbContext>(options => options.UseSqlite(builder.Configuration.GetConnectionString("StreamLink") ?? "Data Source=streamlink.db"));
 builder.Services.AddScoped<SessionState>();
 builder.Services.AddScoped<SessionPersistence>();
 builder.Services.AddScoped<ThemePreferenceService>();
 builder.Services.AddSingleton<ProviderAccessPolicy>();
+builder.Services.AddSingleton<ChannelLogoProxy>();
 builder.Services.AddScoped<IXtreamApiService, XtreamApiService>();
 builder.Services.AddScoped<IStreamUrlService, StreamUrlService>();
 builder.Services.AddScoped<IShareLinkService, ShareLinkService>();

@@ -9,7 +9,7 @@
 else
 {
     <a class="back-link" href="/tv">← All categories</a><div class="page-heading compact"><div><div class="eyebrow">LIVE TELEVISION</div><h1>@CategoryName</h1><p class="muted page-intro">Pick a channel to open its stream.</p><span class="count-badge live-count"><span class="live-dot">LIVE</span> · @filteredChannels.Count() channels</span></div></div>
-    <input class="search" placeholder="Search channels" @bind="Search" @bind:event="oninput" @bind:after="UpdateSearchUri" />
+    <CatalogSearch Placeholder="Search channels" OnSearch="UpdateSearchUri" />
     @if (loading) { <div class="loading-card">Loading channels…</div> }
     else if (loadError is not null) { <div class="empty-card">@loadError</div> }
     else if (channels.Count == 0) { <div class="empty-card">No channels were returned for this category.</div> }
@@ -37,9 +37,11 @@ else
     [SupplyParameterFromQuery(Name = "search")]
     public string? Search { get; set; } = "";
     private IEnumerable<XtreamChannel> filteredChannels => CatalogSort.Apply(channels, channel => channel.Name, Search, "provider");
-    private void UpdateSearchUri() => Navigation.NavigateTo(
-        Navigation.GetUriWithQueryParameter("search", string.IsNullOrWhiteSpace(Search) ? null : Search),
-        replace: true);
+    private void UpdateSearchUri(string? search)
+    {
+        Search = search;
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("search", string.IsNullOrWhiteSpace(search) ? null : search), replace: true);
+    }
     private void OpenChannel(XtreamChannel channel) => Navigation.NavigateTo($"/channel/{channel.StreamId}");
     protected override async Task OnParametersSetAsync()
     {

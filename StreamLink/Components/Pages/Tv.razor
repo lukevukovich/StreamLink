@@ -9,7 +9,7 @@
 else
 {
     <div class="page-heading"><div><div class="eyebrow">LIVE TELEVISION</div><h1>What do you want to watch?</h1><p class="muted page-intro">Choose a category to start exploring.</p><span class="count-badge category-count live-count"><span class="live-dot">LIVE</span> · @filteredCategories.Count() categories</span></div></div>
-    <input class="search category-search" placeholder="Search categories" aria-label="Search categories" @bind="Search" @bind:event="oninput" @bind:after="UpdateSearchUri" />
+    <CatalogSearch CssClass="category-search" Placeholder="Search categories" OnSearch="UpdateSearchUri" />
     @if (loading) { <div class="loading-card">Loading your categories…</div> }
     else if (!string.IsNullOrWhiteSpace(loadError)) { <div class="empty-card">@loadError</div> }
     else if (categories.Count == 0) { <div class="empty-card">No live TV categories were returned by your provider.</div> }
@@ -27,9 +27,11 @@ else
     [SupplyParameterFromQuery(Name = "search")]
     public string? Search { get; set; } = "";
     private IEnumerable<XtreamCategory> filteredCategories => CatalogSort.Apply(categories, category => category.Name, Search, "provider");
-    private void UpdateSearchUri() => Navigation.NavigateTo(
-        Navigation.GetUriWithQueryParameter("search", string.IsNullOrWhiteSpace(Search) ? null : Search),
-        replace: true);
+    private void UpdateSearchUri(string? search)
+    {
+        Search = search;
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("search", string.IsNullOrWhiteSpace(search) ? null : search), replace: true);
+    }
     protected override async Task OnInitializedAsync()
     {
         if (Session.Session is null) return;
