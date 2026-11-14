@@ -1248,7 +1248,7 @@ html[data-vlc-device="android"] .vlc-label-desktop {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   padding: 14px 16px;
   padding-bottom: 12px;
   background: rgb(var(--surface-rgb) / 0.78);
@@ -1419,7 +1419,6 @@ html[data-theme="rose-quartz"] .logout-button:focus-visible {
     flex-direction: column;
   }
   .share-item {
-    gap: 12px;
     padding: 13px 14px;
     padding-top: 11px;
   }
